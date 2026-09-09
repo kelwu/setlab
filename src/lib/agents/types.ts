@@ -28,6 +28,7 @@ export interface SetlistInput {
   wordplayTheme?: string;
   venueContext?: string;
   recentlyPlayed?: string[];  // "Artist — Title" strings to avoid (do-not-repeat)
+  cleanOnly?: boolean;        // corporate/radio: hard-exclude tracks marked explicit/dirty
 }
 
 export interface LibraryTrack {

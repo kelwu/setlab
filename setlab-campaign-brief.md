@@ -2,7 +2,7 @@
 
 > **Purpose:** Single source of truth for writing accurate SetLab email campaigns (Loops).
 > Keep this current — update the "What's New" section whenever a feature ships.
-> Last updated: 2026-09-07.
+> Last updated: 2026-09-09.
 
 ---
 
@@ -90,6 +90,8 @@ Lead with the **benefit**, support with the **feature**.
 
 Most recent first. Convert these into "we just shipped…" emails.
 
+- **3-hour sets** — the set length now goes up to 180 minutes, for the long corporate, wedding, and residency slots.
+- **Clean-only sets** — one toggle keeps a set corporate-, wedding-, and radio-safe by leaving explicit versions out of the pool.
 - **See why the AI picked every track** — tap "Why ▾" on any track in your set to read the AI's reasoning for including it and its planned transition note. The notes were always there; now they're one tap away on every device, including mobile.
 - **Shared set links now show the full picture** — purchase links and AI review notes now appear on shared/public set pages, not just in your own view. Everyone you share with sees the same detail you do.
 - **Step-by-step visual guides** — new help walkthroughs for importing your library, planning a set, and building a crate, at setlab.ai/help. The help chat links you straight to them.
