@@ -9,6 +9,7 @@ import { GIG_BLUEPRINT_SYSTEM, SELECTOR_SYSTEM, NOTES_SYSTEM } from './prompts';
 import { SetlistInputError } from './errors';
 import { camelotRelation, toCamelot } from '@/lib/setdrop/key-utils';
 import { genreRelevance, superFamily, passesGenreGate } from '@/lib/setdrop/genre';
+import { passesCleanFilter } from '@/lib/setdrop/clean';
 import { MIN_SUPERFAMILY_TRACKS, targetTrackCount } from '@/lib/setdrop/readiness';
 import { TasteAffinity, affinityTrackKey, affinityArtistKey } from '@/lib/setdrop/taste';
 
@@ -42,10 +43,11 @@ const PIPELINE_TIMEOUT_MS = 285_000;
 // limit — so without these a stalled call always blows past 300s.
 // Three sequential stages, each internally fast: blueprint (single no-search
 // call ~15-30s), selection (Sonnet, compact ids-only output ~15-40s), and notes
-// (Haiku, parallel batches ~15-30s wall). Worst case 60 + 90 + 45 = 195 < 285
+// (Haiku, parallel batches ~15-30s wall). Worst case 60 + 120 + 45 = 225 < 285
 // PIPELINE_TIMEOUT < 300 maxDuration — a big margin vs the old monolithic call.
+// (Selector gets the widest window: a 3hr / ~60-track set is its slowest output.)
 const BLUEPRINT_TIMEOUT_MS = 60_000;
-const SELECTOR_TIMEOUT_MS = 90_000;   // stage: selection only (no per-track prose)
+const SELECTOR_TIMEOUT_MS = 120_000;  // stage: selection only (no per-track prose) — headroom for 3hr (~60-track) sets
 const NOTES_TIMEOUT_MS = 45_000;      // stage: each parallel note batch (Haiku)
 
 type CallOptions = { signal?: AbortSignal; timeout?: number; onUsage?: (u: CallUsage) => void; model?: string };
@@ -541,9 +543,10 @@ ${JSON.stringify(tracks.map(t => ({
     SELECTOR_TOOL,
     // Compact output (ids only), but a long set is ~90-130 tokens/track once you
     // count UUID ids + reviewNotes, so a 120-min (~30 track) set needs headroom —
-    // 2048 truncated large sets into an empty tracks array. The model stops at
-    // tool completion, so this doesn't slow normal sets.
-    8192,
+    // 2048 truncated large sets into an empty tracks array. A 180-min set is ~60-72
+    // tracks, so 8192 is no longer safe; 16384 covers the longest set. The model
+    // stops at tool completion, so this doesn't slow normal sets.
+    16384,
     { signal, timeout: SELECTOR_TIMEOUT_MS, onUsage },
   );
   if (!selection?.tracks?.length) {
@@ -658,7 +661,16 @@ export async function runSetlistPipeline(
 
   try {
     onProgress?.({ type: 'step', step: 1, message: 'Gathering gig intel...' });
-    const profile = computeLibraryProfile(tracks);
+
+    // Clean-only (corporate / radio): drop tracks whose title marks them explicit
+    // BEFORE anything else, so the profile, the readiness floor, and the selector
+    // all reason over the same clean pool — an explicit track can never reach the
+    // set even if it were seeded or wishlisted.
+    const pool = input.cleanOnly
+      ? tracks.filter(t => passesCleanFilter(t.title, 'block'))
+      : tracks;
+
+    const profile = computeLibraryProfile(pool);
 
     // Pool readiness across whatever axes the DJ supplied (genre / era / artist /
     // playlist). One scan computes: genre super-family + exact counts (for the genre
@@ -676,7 +688,7 @@ export async function runSetlistPipeline(
     let superFamilyCount = 0;
     let poolCount = 0;      // tracks passing all active axes (genre-not-off, era, artist)
     let poolWithYear = 0;   // of the combined pool, how many carry a release year
-    for (const t of tracks) {
+    for (const t of pool) {
       if (t.isWishlist) continue;
       if (genreActive) {
         const rel = genreRelevance(input.primaryGenre!, t.genre ?? '', t.lastfmTags ?? []);
@@ -725,7 +737,7 @@ export async function runSetlistPipeline(
     const { gigIntel: intel, blueprint } = await runGigBlueprint(profile, input, target, signal, onUsage);
 
     onProgress?.({ type: 'step', step: 3, message: 'Selecting and sequencing tracks...' });
-    const filtered = filterTracksForGig(tracks, blueprint, input, affinity);
+    const filtered = filterTracksForGig(pool, blueprint, input, affinity);
 
     const reviewed = await runSelectorReviewer(input, filtered, blueprint, intel, recentlyPlayed, affinity, signal, onUsage);
 

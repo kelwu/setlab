@@ -102,7 +102,7 @@ export type Database = {
           secondary_genre: string | null
           vibe: string | null
           crowd_context: 'club' | 'lounge' | 'wedding' | 'festival' | 'house-party' | 'radio' | 'corporate' | null
-          duration_minutes: 30 | 60 | 90 | 120 | null
+          duration_minutes: 30 | 60 | 90 | 120 | 180 | null
           energy_arc: Json | null
           lineup_slot: 'opener' | 'middle' | 'headliner' | 'closing' | null
           wordplay_theme: string | null

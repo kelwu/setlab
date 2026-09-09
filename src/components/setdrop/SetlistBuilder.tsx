@@ -137,6 +137,7 @@ export function SetlistBuilder() {
   const [soundcloudUrl, setSoundcloudUrl] = useState('');
   const [wordplay, setWordplay] = useState('');
   const [venueName, setVenueName] = useState('');
+  const [cleanOnly, setCleanOnly] = useState(false);
 
   const [libraryCount, setLibraryCount] = useState<number | null>(null);
   const [libraryTracks, setLibraryTracks] = useState<{ artist: string; title: string; bpm: number; key: string }[]>([]);
@@ -319,6 +320,7 @@ export function SetlistBuilder() {
         seedTracks: seedSearch ? [seedSearch] : undefined,
         wordplayTheme: wordplay || undefined,
         venueContext: venueName || undefined,
+        cleanOnly: cleanOnly || undefined,
       },
     });
     const doGenerateFetch = () => fetch('/api/generate-setlist', {
@@ -443,7 +445,7 @@ export function SetlistBuilder() {
           primary_genre: primaryGenre || null,
           secondary_genre: secondaryGenre || null,
           crowd_context: crowdVal,
-          duration_minutes: durationMinutes as 30 | 60 | 90 | 120,
+          duration_minutes: durationMinutes as 30 | 60 | 90 | 120 | 180,
           lineup_slot: slotVal,
           energy_arc: { intro: arcPoints[0], buildup: arcPoints[1], peak: arcPoints[2], sustain: arcPoints[3], cooldown: arcPoints[4] },
           is_public: false,
@@ -956,6 +958,20 @@ export function SetlistBuilder() {
               placeholder="https://soundcloud.com/artist/track" />
             <SDInput label="Wordplay Word (optional — hip hop)" value={wordplay} onChange={setWordplay}
               placeholder={`e.g. "tonight", "money", "fly" — AI will find lyrical transitions`} />
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Clean Only (optional)</label>
+              <div style={{ fontFamily:SD.body, fontSize:13, color:SD.textMuted, lineHeight:1.6 }}>
+                Excludes tracks marked explicit/dirty in your library — keep corporate, wedding, and radio sets safe.
+              </div>
+              <button onClick={() => setCleanOnly(v => !v)} style={{
+                alignSelf:'flex-start', fontFamily:SD.mono, fontSize:SD.t11, letterSpacing:1.5,
+                textTransform:'uppercase', cursor:'pointer',
+                background: cleanOnly ? SD.accentDim : SD.surface2,
+                color: cleanOnly ? SD.accent : SD.textMuted,
+                border:`1px solid ${cleanOnly ? SD.accent + '66' : SD.border}`,
+                borderRadius:SD.r2, padding:'8px 14px', whiteSpace:'nowrap', transition:'all .15s',
+              }}>{cleanOnly ? '✓ Clean only' : 'Any version'}</button>
+            </div>
             <div style={{ background:SD.surface, border:`1px solid ${SD.border}`,
               borderRadius:3, padding:'20px 24px' }}>
               <div style={{ fontFamily:SD.mono, fontSize:12, color:SD.accent,
@@ -970,6 +986,7 @@ export function SetlistBuilder() {
                   ['Venue', venueName || '—'],
                   ['Arc', arcPoints.join(' → ')],
                   ['Seed', seedSearch || '—'],
+                  ['Clean', cleanOnly ? 'Explicit excluded' : '—'],
                 ] as [string, string][]).map(([k, v]) => (
                   <div key={k} style={{ marginBottom:6 }}>
                     <span style={{ fontFamily:SD.mono, fontSize:12, color:SD.textMuted,

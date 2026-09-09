@@ -87,7 +87,7 @@ export const GENRE_GROUPS: { label: string; genres: string[] }[] = [
 export const GENRES = GENRE_GROUPS.flatMap(g => g.genres);
 export const CROWD_TYPES = ['Club','Lounge','Wedding','Festival','House Party','Radio','Corporate'] as const;
 export const LINEUP_SLOTS = ['Opener','Middle','Headliner','Closing'] as const;
-export const DURATION_OPTS = ['30 min','60 min','90 min','120 min'] as const;
+export const DURATION_OPTS = ['30 min','60 min','90 min','120 min','180 min'] as const;
 // Era axis: decade labels for the pool selector. parseInt(label) yields the
 // decade-start year stored on SetlistInput.eras (e.g. "2000s" → 2000).
 export const DECADES = ['1980s','1990s','2000s','2010s','2020s'] as const;
