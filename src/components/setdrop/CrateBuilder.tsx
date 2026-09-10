@@ -284,9 +284,9 @@ export function CrateBuilder() {
 
       {/* Header */}
       <PageHeader
-        eyebrow="Themed Crate"
+        eyebrow="Themed Crate · a supporting tool"
         title="CRATE BUILDER"
-        subtitle="A reusable bin of tracks by vibe — group now, play later. Describe the crate you want; AI scans your whole library and curates to the size you choose."
+        subtitle="The record bag you dig from — a reusable bin of tracks by vibe you prep now and pull from later (including as a source when you plan a set). Describe the crate you want; AI scans your whole library and curates to the size you choose."
       />
 
       {/* Generator form */}
