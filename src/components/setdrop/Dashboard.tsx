@@ -370,28 +370,50 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* Set vs Crate — the two core create flows, framed side by side so the
-            difference reads at the decision point, not just inside each tool. */}
-        <div className="sd-grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
-          {[
-            { icon:'≣', title:'PLAN A SET', copy:'An ordered set for one gig — sequenced start to finish, with transitions and an energy arc.', page:'builder', cta:'Plan a Set' },
-            { icon:'▦', title:'BUILD A CRATE', copy:'A reusable bin of tracks by vibe — group now, play later. Pull from it whenever.', page:'crates', cta:'Build a Crate' },
-          ].map(card => (
-            <div key={card.page}
-              onClick={() => router.push('/' + card.page)}
-              style={{ background:SD.surface, border:`1px solid ${SD.border}`, borderRadius:4,
-                padding:'20px 22px', cursor:'pointer', transition:'border-color .15s, background .15s',
-                display:'flex', flexDirection:'column', gap:10 }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = SD.accent; e.currentTarget.style.background = SD.surface2; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = SD.border; e.currentTarget.style.background = SD.surface; }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <span style={{ fontSize:20, color:SD.accent, lineHeight:1 }}>{card.icon}</span>
-                <span style={{ fontFamily:SD.display, fontSize:20, letterSpacing:2, color:SD.text }}>{card.title}</span>
-              </div>
-              <div style={{ fontFamily:SD.body, fontSize:13, color:SD.textSec, lineHeight:1.5, flex:1 }}>{card.copy}</div>
-              <span style={{ fontFamily:SD.mono, fontSize:12, letterSpacing:1, color:SD.accent, textTransform:'uppercase' }}>{card.cta} →</span>
+        {/* Set vs Crate — the Set Builder is the flagship, so it leads as a larger
+            hero card (2fr); the Crate is a genuine but clearly secondary utility
+            (1fr). Demote, don't bury: crates stay one click away as a "dig-from-it
+            later" tool and a feeder for sets. sd-grid-2 collapses both to 1fr on mobile. */}
+        <div className="sd-grid-2" style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:16, marginBottom:16, alignItems:'stretch' }}>
+          {/* Primary — Plan a Set (flagship hero) */}
+          <div onClick={() => router.push('/builder')}
+            style={{ background:SD.surface, border:`1px solid ${SD.border}`, borderRadius:4,
+              padding:'26px 28px', cursor:'pointer', transition:'border-color .15s, background .15s',
+              display:'flex', flexDirection:'column', gap:14 }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = SD.accent; e.currentTarget.style.background = SD.surface2; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = SD.border; e.currentTarget.style.background = SD.surface; }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <span style={{ fontSize:26, color:SD.accent, lineHeight:1 }}>≣</span>
+              <span style={{ fontFamily:SD.display, fontSize:34, letterSpacing:2, color:SD.text, lineHeight:1 }}>PLAN A SET</span>
             </div>
-          ))}
+            <div style={{ fontFamily:SD.body, fontSize:14, color:SD.textSec, lineHeight:1.6, flex:1 }}>
+              An ordered set for one gig — sequenced start to finish, with transitions and an energy arc, tuned to your crowd and slot.
+            </div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {['energy arc','harmonic mixing','do-not-repeat'].map(c => (
+                <span key={c} style={{ fontFamily:SD.mono, fontSize:10, letterSpacing:.5, color:SD.textSec,
+                  background:SD.surface2, border:`1px solid ${SD.border}`, borderRadius:100, padding:'4px 10px' }}>{c}</span>
+              ))}
+            </div>
+            <span style={{ alignSelf:'flex-start', fontFamily:SD.mono, fontSize:12, letterSpacing:1, textTransform:'uppercase',
+              background:SD.accent, color:'#000', borderRadius:3, padding:'11px 22px' }}>Plan a Set →</span>
+          </div>
+
+          {/* Secondary — Build a Crate (utility) */}
+          <div onClick={() => router.push('/crates')}
+            style={{ background:SD.surface, border:`1px solid ${SD.border}`, borderRadius:4,
+              padding:'22px 20px', cursor:'pointer', transition:'border-color .15s, background .15s',
+              display:'flex', flexDirection:'column', gap:10 }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = SD.borderMid; e.currentTarget.style.background = SD.surface2; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = SD.border; e.currentTarget.style.background = SD.surface; }}>
+            <span style={{ fontSize:20, color:SD.textMuted, lineHeight:1 }}>▦</span>
+            <span style={{ fontFamily:SD.display, fontSize:20, letterSpacing:2, color:SD.textSec }}>BUILD A CRATE</span>
+            <div style={{ fontFamily:SD.body, fontSize:12, color:SD.textMuted, lineHeight:1.6, flex:1 }}>
+              A reusable bin of tracks by vibe — prep now, dig from it later.
+            </div>
+            <span style={{ alignSelf:'flex-start', fontFamily:SD.mono, fontSize:12, letterSpacing:1, textTransform:'uppercase',
+              background:'transparent', color:SD.textSec, border:`1px solid ${SD.border}`, borderRadius:3, padding:'9px 14px' }}>Build a crate →</span>
+          </div>
         </div>
 
         {/* Status strip */}
