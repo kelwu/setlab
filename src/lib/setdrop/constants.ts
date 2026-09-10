@@ -86,6 +86,17 @@ export const GENRE_GROUPS: { label: string; genres: string[] }[] = [
 
 export const GENRES = GENRE_GROUPS.flatMap(g => g.genres);
 export const CROWD_TYPES = ['Club','Lounge','Wedding','Festival','House Party','Radio','Corporate'] as const;
+// Formal / theme-sensitive crowds: a "clean" (bleeped/radio) edit isn't enough —
+// the SUBJECT MATTER must also suit a professional/family/broadcast room. Drives
+// the selector's theme-appropriateness steer + the honest review-note caveat
+// (see pipeline.ts). Case-insensitive membership; compare via .toLowerCase().
+export const THEME_SENSITIVE_CROWDS = ['Corporate','Wedding','Radio','Lounge'] as const;
+
+/** Whether a crowd-context string is a formal / theme-sensitive room. */
+export function isThemeSensitiveCrowd(crowdContext?: string): boolean {
+  const c = (crowdContext ?? '').toLowerCase().trim();
+  return THEME_SENSITIVE_CROWDS.some(t => t.toLowerCase() === c);
+}
 export const LINEUP_SLOTS = ['Opener','Middle','Headliner','Closing'] as const;
 export const DURATION_OPTS = ['30 min','60 min','90 min','120 min','180 min'] as const;
 // Era axis: decade labels for the pool selector. parseInt(label) yields the

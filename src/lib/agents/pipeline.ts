@@ -10,6 +10,7 @@ import { SetlistInputError } from './errors';
 import { camelotRelation, toCamelot } from '@/lib/setdrop/key-utils';
 import { genreRelevance, superFamily, passesGenreGate } from '@/lib/setdrop/genre';
 import { passesCleanFilter } from '@/lib/setdrop/clean';
+import { isThemeSensitiveCrowd } from '@/lib/setdrop/constants';
 import { MIN_SUPERFAMILY_TRACKS, targetTrackCount } from '@/lib/setdrop/readiness';
 import { TasteAffinity, affinityTrackKey, affinityArtistKey } from '@/lib/setdrop/taste';
 
@@ -526,6 +527,8 @@ ${JSON.stringify(intel, null, 2)}
 
 User preferences:
 - Setlist name: "${input.name || 'Untitled Set'}"
+- Crowd: ${input.crowdContext}
+- Theme-sensitive crowd (avoid inappropriate subject matter, not just explicit versions): ${isThemeSensitiveCrowd(input.crowdContext) ? 'YES' : 'No'}
 - Pool focus: ${poolDescription(input)}
 - Wordplay theme: ${input.wordplayTheme || 'None'}
 - Seed tracks: ${input.seedTracks?.join(', ') || 'None'}
@@ -763,6 +766,13 @@ export async function runSetlistPipeline(
       const shown = input.similarArtists.slice(0, 5);
       const more = input.similarArtists.length > shown.length ? ', and more' : '';
       reviewNotes += `\n\nOnly ${anchorInSet} track${anchorInSet === 1 ? '' : 's'} by ${artistLabel(input.artists)} fit — filled the rest with similar artists (${artistLabel(shown)}${more}).`;
+    }
+    // Honesty for theme-sensitive crowds: we steer the selection toward crowd-
+    // appropriate subject matter, but that's model judgement over title-only
+    // metadata — a "clean" edit can still carry adult themes. Never claim it's
+    // guaranteed; put the final appropriateness call back on the DJ + their client.
+    if (isThemeSensitiveCrowd(input.crowdContext)) {
+      reviewNotes += `\n\n${input.crowdContext} set: tracks are steered toward clean versions and crowd-appropriate themes, but a "clean" edit can still carry adult subject matter — give the final list a quick read for your client before you play it.`;
     }
 
     return {

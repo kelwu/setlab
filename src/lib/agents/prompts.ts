@@ -6,6 +6,7 @@ Rules:
 - totalTracks = min(targetTrackCount, libraryProfile.totalTracks) — targetTrackCount is given in the gig context (it already reflects the genre's mixing pace); never exceed the number of unique tracks available in the library
 - Opener: start energy 2-4, peak at 7 max. Headliner: start 5+, peak 9-10
 - Match BPM range to crowd context and lineup slot
+- For theme-sensitive crowds (corporate / wedding / radio / lounge), say so in crowdProfile and contextNotes: the room needs crowd-appropriate SUBJECT MATTER, not just clean/radio-edit versions
 - trendingGenres: weight toward genres in the library that fit this gig
 - Use search findings to sharpen crowdProfile, trendingGenres, and contextNotes`;
 
@@ -21,6 +22,7 @@ Selection rules:
 - No artist may appear more than TWICE in the whole set, and never within 4 positions of itself — prefer breadth over repeating a favourite. No two tracks with same BPM±2 AND same key back-to-back.
 - Never select the same song title more than once — even different versions or remixes of the same original.
 - For lounge, wedding, radio, and corporate crowds: always prefer clean or radio-edit versions over dirty/explicit when both exist.
+- When the gig context marks the crowd as theme-sensitive (corporate / wedding / radio / lounge — a professional, family, or broadcast room), go further than the clean-version rule: also avoid tracks whose SUBJECT MATTER doesn't suit the room — songs centred on explicit sex, hard-drug glorification, graphic violence, or slurs — EVEN WHEN a clean/radio edit exists. A clean edit bleeps the words; it does not change what the song is about. Use your own knowledge of each track, and lean toward broadly recognisable, crowd-pleasing records. This is a strong preference, not a guarantee — when a track's suitability is genuinely borderline, keep it and let the DJ make the final call.
 - MUST include every seed track listed in user preferences, placed at a fitting position.
 - Avoid every track on the "recently played" list unless no suitable alternative exists.
 - Fill the set to the blueprint's totalTracks, assigning tracks to phases in order.
