@@ -90,6 +90,7 @@ Lead with the **benefit**, support with the **feature**.
 
 Most recent first. Convert these into "we just shipped…" emails.
 
+- **Corporate-aware sets** — for corporate, wedding, radio, and lounge crowds the builder now steers clear of tracks whose *subject matter* isn't right for the room — not just the explicit versions, but the clean edits of songs that are still about the wrong things. It's a smart steer, not a guarantee, so the set comes with a reminder to give it a final read for your client.
 - **3-hour sets** — the set length now goes up to 180 minutes, for the long corporate, wedding, and residency slots.
 - **Clean-only sets** — one toggle keeps a set corporate-, wedding-, and radio-safe by leaving explicit versions out of the pool.
 - **See why the AI picked every track** — tap "Why ▾" on any track in your set to read the AI's reasoning for including it and its planned transition note. The notes were always there; now they're one tap away on every device, including mobile.
