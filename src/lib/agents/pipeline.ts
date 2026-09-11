@@ -44,10 +44,12 @@ const PIPELINE_TIMEOUT_MS = 285_000;
 // limit — so without these a stalled call always blows past 300s.
 // Three sequential stages, each internally fast: blueprint (single no-search
 // call ~15-30s), selection (Sonnet, compact ids-only output ~15-40s), and notes
-// (Haiku, parallel batches ~15-30s wall). Worst case 60 + 120 + 45 = 225 < 285
+// (Haiku, parallel batches ~15-30s wall). Worst case 90 + 120 + 45 = 255 < 285
 // PIPELINE_TIMEOUT < 300 maxDuration — a big margin vs the old monolithic call.
 // (Selector gets the widest window: a 3hr / ~60-track set is its slowest output.)
-const BLUEPRINT_TIMEOUT_MS = 60_000;
+// Blueprint is normally ~15-30s; the 90s ceiling absorbs occasional Anthropic
+// slowness (a slow-but-not-hung call) instead of failing an otherwise-fine set.
+const BLUEPRINT_TIMEOUT_MS = 90_000;
 const SELECTOR_TIMEOUT_MS = 120_000;  // stage: selection only (no per-track prose) — headroom for 3hr (~60-track) sets
 const NOTES_TIMEOUT_MS = 45_000;      // stage: each parallel note batch (Haiku)
 
