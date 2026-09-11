@@ -496,6 +496,7 @@ async function loadLibraryFromSupabase(): Promise<LibraryTrack[] | null> {
         .from('serato_tracks')
         .select('id, artist, title, bpm, key, genre, file_path, lastfm_tags')
         .eq('library_id', library.id)
+        .eq('in_library', true)
         .order('artist')
         .range(offset, offset + PAGE - 1);
       if (!page?.length) break;

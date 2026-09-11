@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
                 const { data } = await supabase.from('serato_tracks')
                   .select('id, artist, title, bpm, key, genre, year, file_path, lastfm_tags')
                   .eq('library_id', lib.id)
+                  .eq('in_library', true)
                   .in('id', ids.slice(i, i + CHUNK));
                 if (data) rows.push(...data);
               }
@@ -195,6 +196,7 @@ export async function POST(req: NextRequest) {
                 return supabase.from('serato_tracks')
                   .select(SELECT)
                   .eq('library_id', lib.id)
+                  .eq('in_library', true)
                   .or(`title.ilike.%${safe}%,artist.ilike.%${safe}%`)
                   .limit(5);
               });
@@ -212,17 +214,17 @@ export async function POST(req: NextRequest) {
                 const [{ data: genreRows }, { data: nullGenreRows }, { data: otherRows }] =
                   await Promise.all([
                     applyAxes(supabase.from('serato_tracks').select(SELECT)
-                      .eq('library_id', lib.id).ilike('genre', `%${genre}%`)).limit(400),
+                      .eq('library_id', lib.id).eq('in_library', true).ilike('genre', `%${genre}%`)).limit(400),
                     applyAxes(supabase.from('serato_tracks').select(SELECT)
-                      .eq('library_id', lib.id).is('genre', null)).limit(100),
+                      .eq('library_id', lib.id).eq('in_library', true).is('genre', null)).limit(100),
                     applyAxes(supabase.from('serato_tracks').select(SELECT)
-                      .eq('library_id', lib.id).not('genre', 'ilike', `%${genre}%`)).limit(100),
+                      .eq('library_id', lib.id).eq('in_library', true).not('genre', 'ilike', `%${genre}%`)).limit(100),
                   ]);
                 allRows = [...(genreRows ?? []), ...(nullGenreRows ?? []), ...(otherRows ?? [])];
               } else {
                 // No genre axis — the pool is defined by era and/or artist alone.
                 const { data } = await applyAxes(supabase.from('serato_tracks').select(SELECT)
-                  .eq('library_id', lib.id)).limit(800);
+                  .eq('library_id', lib.id).eq('in_library', true)).limit(800);
                 allRows = data ?? [];
               }
 
@@ -246,7 +248,7 @@ export async function POST(req: NextRequest) {
                 const simFilter = names.map(a => `artist.ilike.%${sanitizeLike(a)}%`)
                   .filter(f => f.length > 'artist.ilike.%%'.length).join(',');
                 if (simFilter) {
-                  let simQuery = supabase.from('serato_tracks').select(SELECT).eq('library_id', lib.id);
+                  let simQuery = supabase.from('serato_tracks').select(SELECT).eq('library_id', lib.id).eq('in_library', true);
                   if (yearMin !== undefined) simQuery = simQuery.gte('year', yearMin);
                   if (yearMax !== undefined) simQuery = simQuery.lte('year', yearMax);
                   if (genre) simQuery = simQuery.ilike('genre', `%${genre}%`);
@@ -266,7 +268,7 @@ export async function POST(req: NextRequest) {
                 // pipeline can emit a precise "not enough tracks" message rather than
                 // erroring on an empty library.
                 const { data: fallbackRows } = await applyAxes(supabase.from('serato_tracks')
-                  .select(SELECT).eq('library_id', lib.id)).limit(500);
+                  .select(SELECT).eq('library_id', lib.id).eq('in_library', true)).limit(500);
                 allRows = fallbackRows ?? [];
               }
 

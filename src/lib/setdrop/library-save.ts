@@ -37,7 +37,6 @@ export async function saveTracksToDatabase(
     .single();
 
   let libraryId: string;
-  let isFirstSync = false;
 
   if (existing) {
     await admin.from('serato_libraries')
@@ -45,7 +44,6 @@ export async function saveTracksToDatabase(
       .eq('id', existing.id);
     libraryId = existing.id;
   } else {
-    isFirstSync = true;
     const { data, error } = await admin.from('serato_libraries')
       .insert({ user_id: userId, total_tracks: deduped.length, last_synced: now, is_public: false, source })
       .select('id').single();
@@ -53,14 +51,58 @@ export async function saveTracksToDatabase(
     libraryId = data.id;
   }
 
-  let added = 0;
-  let removed = 0;
+  // Incremental re-sync (keyed on the canonical artist|title). Earlier this was a
+  // destructive delete-all + reinsert, which churned every track UUID (breaking
+  // Rekordbox crates), reset play_count, and forced full re-enrichment on every
+  // import. We diff instead: brand-new tracks are inserted, tracks that vanished
+  // from the source are SOFT-removed (in_library=false, so history/crates survive),
+  // and matched tracks keep their UUID, play_count, and enrichment untouched. This
+  // makes repeated syncing safe and is the groundwork for any automatic sync.
+
+  // Fetch ALL existing rows, paginated past Supabase's 1000-row page cap (the cap
+  // is exactly why the old code avoided diffing — handle it explicitly here).
+  const existingByKey = new Map<string, { id: string; inLibrary: boolean }>();
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await admin
+      .from('serato_tracks')
+      .select('id, artist, title, in_library')
+      .eq('library_id', libraryId)
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    for (const r of data ?? []) {
+      existingByKey.set(trackKey(r.artist ?? '', r.title ?? ''), { id: r.id, inLibrary: r.in_library });
+    }
+    if (!data || data.length < PAGE) break;
+  }
+
+  // Maps each track's canonical key → its stable serato_tracks UUID (existing rows
+  // keep theirs; new rows get one on insert) so Rekordbox playlist membership
+  // resolves to real row ids — and now survives re-syncs.
+  const keyToId = new Map<string, string>();
+  const toInsert: LibraryTrack[] = [];
+  const reactivateIds: string[] = [];   // previously soft-removed, present again → restore
   let unchanged = 0;
 
-  // Maps each track's canonical key → its freshly-inserted serato_tracks UUID, so
-  // Rekordbox playlist membership can be persisted as real row ids (clean joins at
-  // generation time, no fragile string matching).
-  const keyToId = new Map<string, string>();
+  for (const t of deduped) {
+    const key = trackKey(t.artist ?? '', t.title ?? '');
+    const ex = existingByKey.get(key);
+    if (ex) {
+      keyToId.set(key, ex.id);
+      if (ex.inLibrary) unchanged++;
+      else reactivateIds.push(ex.id);
+    } else {
+      toInsert.push(t);
+    }
+  }
+
+  // Active rows whose key is no longer in the source → soft-remove.
+  const incomingKeys = new Set(deduped.map(t => trackKey(t.artist ?? '', t.title ?? '')));
+  const removeIds: string[] = [];
+  for (const [key, ex] of existingByKey) {
+    if (ex.inLibrary && !incomingKeys.has(key)) removeIds.push(ex.id);
+  }
+
   const rowFor = (t: LibraryTrack) => ({
     library_id: libraryId,
     artist: t.artist || null, title: t.title || null,
@@ -68,36 +110,34 @@ export async function saveTracksToDatabase(
     year: t.year || null, file_path: t.filePath || null,
     play_count: 0, in_library: true,
   });
-  const insertBatch = async (batch: LibraryTrack[]) => {
+
+  for (let i = 0; i < toInsert.length; i += BATCH) {
     const { data, error } = await admin
       .from('serato_tracks')
-      .insert(batch.map(rowFor))
+      .insert(toInsert.slice(i, i + BATCH).map(rowFor))
       .select('id, artist, title');
     if (error) throw new Error(error.message);
     for (const r of data ?? []) keyToId.set(trackKey(r.artist ?? '', r.title ?? ''), r.id);
+  }
+
+  // Flip in_library for returned / departed tracks, chunked to keep .in() lists
+  // (and the request URL) well under Supabase limits.
+  const ID_CHUNK = 300;
+  const setInLibrary = async (ids: string[], value: boolean) => {
+    for (let i = 0; i < ids.length; i += ID_CHUNK) {
+      const { error } = await admin
+        .from('serato_tracks')
+        .update({ in_library: value })
+        .in('id', ids.slice(i, i + ID_CHUNK));
+      if (error) throw new Error(error.message);
+    }
   };
+  await setInLibrary(reactivateIds, true);
+  await setInLibrary(removeIds, false);
 
-  if (!isFirstSync) {
-    // Delete all existing tracks then re-insert the full deduped set.
-    // Simpler than diffing and avoids the Supabase 1000-row default page cap
-    // that would corrupt the diff when libraries exceed 1000 tracks.
-    const { error: delError } = await admin
-      .from('serato_tracks')
-      .delete()
-      .eq('library_id', libraryId);
-    if (delError) throw new Error(delError.message);
-    // Re-inserting renumbers every track UUID, invalidating any crate's track_ids.
-    // Drop stale crates now; they're rebuilt below when playlists are supplied.
-    await admin.from('serato_crates').delete().eq('library_id', libraryId);
-  }
-
-  for (let i = 0; i < deduped.length; i += BATCH) {
-    await insertBatch(deduped.slice(i, i + BATCH));
-  }
-  added = deduped.length;
-
-  // Persist Rekordbox playlists as crates keyed on real track UUIDs. Only touch
-  // crates when playlists are supplied, so a Serato re-sync never wipes them.
+  // Persist Rekordbox playlists as crates keyed on real (now stable) track UUIDs.
+  // Only touch crates when playlists are supplied, so a Serato re-sync never wipes
+  // them; rebuilding from the fresh playlist data also prunes any removed tracks.
   if (playlists?.length) {
     await admin.from('serato_crates').delete().eq('library_id', libraryId);
     const crateRows = playlists
@@ -112,5 +152,11 @@ export async function saveTracksToDatabase(
     }
   }
 
-  return { libraryId, trackCount: deduped.length, added, removed, unchanged };
+  return {
+    libraryId,
+    trackCount: deduped.length,
+    added: toInsert.length + reactivateIds.length,
+    removed: removeIds.length,
+    unchanged,
+  };
 }
