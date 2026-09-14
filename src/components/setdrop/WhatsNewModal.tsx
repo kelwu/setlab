@@ -6,15 +6,15 @@ import { SD } from '@/lib/setdrop/constants';
 // Bump VERSION whenever the items below change — a user who has dismissed an older
 // version will see the modal again for the new one (localStorage stores the last
 // version seen). Keep items DJ-facing: the benefit, not the internals.
-const VERSION = '2026-08';
+const VERSION = '2026-09';
 const STORAGE_KEY = 'sd_whatsnew_seen';
 
 const ITEMS: { title: string; desc: string }[] = [
-  { title: 'Smarter set pacing', desc: 'Track counts now match how each genre is actually mixed — no more short, over-long sets.' },
-  { title: 'Crates fill to your size', desc: 'Ask for 25 and get 25 — topped up from the wider genre family, with an honest exact-vs-filled split.' },
-  { title: 'Sharper genre matching', desc: 'No more off-genre tracks slipping into your sets or crates.' },
-  { title: 'Genre column in the Crate Builder', desc: 'See each track’s genre at a glance while you review a crate.' },
-  { title: 'Build sets your way', desc: 'Define a set by genre, era, and/or artist — or straight from a Rekordbox playlist.' },
+  { title: '3-hour sets', desc: 'Set length now goes up to 180 minutes — for the long corporate, wedding, and residency slots.' },
+  { title: 'Clean-only sets', desc: 'One toggle keeps a set corporate- and radio-safe by leaving explicit versions out of the pool.' },
+  { title: 'Corporate-aware sets', desc: 'For corporate, wedding, radio, and lounge crowds, the builder now steers clear of tracks whose subject matter isn’t right for the room — not just the explicit versions.' },
+  { title: 'Smarter library re-sync', desc: 'Re-importing your library now updates only what changed, so your crates and track data stay intact.' },
+  { title: 'Full-detail exports', desc: 'Sets exported to Serato and Rekordbox now carry complete track info — BPM, key, artist, and genre.' },
 ];
 
 export function WhatsNewModal() {
