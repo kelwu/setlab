@@ -27,26 +27,31 @@ function writeTag(type: string, payload: Uint8Array): Uint8Array {
   return out;
 }
 
-// Normalize file path to Serato's internal format
-// Serato stores paths as /C:/Users/... on Windows and /Users/... on Mac
+// Normalize a stored file path to Serato's crate convention: a path relative to
+// the volume root with forward slashes and NO leading slash — e.g.
+// "Users/kel/Music/track.mp3". This is critical: Serato does NOT store any track
+// metadata (BPM/key/artist/genre) in the .crate itself; it matches each ptrk path
+// against its own library database by an EXACT string comparison and shows the
+// metadata it already has for that file. If the string doesn't match byte-for-byte
+// the row imports blank. Serato's pfil (and therefore ptrk) is volume-relative with
+// no leading slash, so our importer keeps that verbatim — the earlier code here
+// wrongly PREPENDED a leading slash, which broke the match for every Serato library.
 function toSeratoPath(raw: string): string {
   let path = raw.trim();
 
-  // Strip file:// URI scheme
-  if (path.startsWith('file:///')) path = path.slice(7);       // → /C:/...
-  else if (path.startsWith('file://')) path = path.slice(6);   // → /path
+  // Strip file:// URI scheme (Rekordbox-sourced paths arrive as file://localhost/…).
+  if (path.startsWith('file://')) path = path.replace(/^file:\/\/(localhost)?/, '');
 
-  // URL-decode percent-encoded chars
+  // URL-decode percent-encoded chars.
   try { path = decodeURIComponent(path); } catch { /* leave as-is */ }
 
-  // Windows absolute path: C:\Users\... → /C:/Users/...
-  if (/^[A-Za-z]:[/\\]/.test(path)) {
-    path = '/' + path.replace(/\\/g, '/');
-  }
+  // Backslashes → forward slashes.
+  path = path.replace(/\\/g, '/');
 
-  // Serato stores all paths with a leading slash; bare relative paths (e.g.
-  // "Users/..." from pfil on macOS) need one added.
-  if (!path.startsWith('/')) path = '/' + path;
+  // Serato stores volume-relative paths with NO leading slash. Strip any leading
+  // slash (macOS "/Users/…" and Rekordbox "/C:/…" / "/Volumes/…" forms); Serato-
+  // native paths ("Users/…") are already slash-less and pass through untouched.
+  path = path.replace(/^\/+/, '');
 
   return path;
 }
