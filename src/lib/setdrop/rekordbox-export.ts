@@ -51,21 +51,30 @@ export function buildRekordboxXml(
   tracks: SetlistTrack[],
   library: LibraryTrack[],
 ): { xml: string; matched: number } {
-  // Match setlist tracks to library file paths
-  const matched: Array<{ track: SetlistTrack; filePath: string; id: number }> = [];
+  // Match setlist tracks to library file paths. We also carry the matched library
+  // track's genre/year: the SetlistTrack itself has neither (see types.ts), but the
+  // Rekordbox XML embeds metadata inline, so pulling them from the library entry is
+  // what makes genre — a field DJs sort/filter on — actually populate on import.
+  const matched: Array<{ track: SetlistTrack; filePath: string; genre: string; year: string; id: number }> = [];
   let idCounter = 1;
 
   for (const t of tracks) {
     const found = findLibraryTrack(t.artist, t.title, library);
     if (found) {
-      matched.push({ track: t, filePath: found.filePath ?? '', id: idCounter++ });
+      matched.push({
+        track: t,
+        filePath: found.filePath ?? '',
+        genre: found.genre ?? '',
+        year: found.year ? String(found.year) : '',
+        id: idCounter++,
+      });
     }
   }
 
-  const collectionEntries = matched.map(({ track, filePath, id }) => {
+  const collectionEntries = matched.map(({ track, filePath, genre, year, id }) => {
     const location = toRekordboxLocation(filePath);
     return `    <TRACK TrackID="${id}" Name="${escapeXml(track.title)}" Artist="${escapeXml(track.artist)}" `
-      + `TotalTime="0" DiscNumber="0" TrackNumber="0" Year="" Genre="" Album="" `
+      + `TotalTime="0" DiscNumber="0" TrackNumber="0" Year="${escapeXml(year)}" Genre="${escapeXml(genre)}" Album="" `
       + `AverageBpm="${track.bpm.toFixed(2)}" Comments="" Rating="0" `
       + `Location="${escapeXml(location)}" Remixer="" Tonality="${escapeXml(track.key)}" `
       + `Label="" Mix=""/>`;
