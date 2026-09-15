@@ -9,6 +9,7 @@ import { buildRekordboxXml, downloadRekordboxXml, buildM3u, downloadM3u } from '
 import { createClient } from '@/lib/supabase/client';
 import { SDButton } from './shared';
 import { SetView, toDisplayTracks, type ResolvedUrls } from './SetView';
+import { ImportInstructions, type ImportPlatform } from './ImportInstructions';
 import { BRAND } from '@/lib/brand';
 import { gateExport } from '@/lib/setdrop/export-gate';
 
@@ -125,6 +126,7 @@ export function SetlistOutput() {
   const [showRegen, setShowRegen] = useState(false);
   const [regenNote, setRegenNote] = useState('');
   const [crateStatus, setCrateStatus] = useState<string | null>(null);
+  const [importGuide, setImportGuide] = useState<{ platform: ImportPlatform; matched: number; total: number } | null>(null);
   const [libraryOnly, setLibraryOnly] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [making, setMaking] = useState(false);
@@ -186,6 +188,7 @@ export function SetlistOutput() {
 
   const handleExportCrate = async () => {
     if (!setlist) return;
+    setImportGuide(null);
     let library = getLibrary();
 
     // If localStorage is empty or stale (no file paths), fetch fresh from Supabase
@@ -240,12 +243,13 @@ export function SetlistOutput() {
     if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
     const data = buildCrate(paths);
     downloadCrate(data, setlist.name);
-    setCrateStatus(`Downloaded ${matched}/${tracks.length} tracks — copy the .crate file into your Serato Subcrates folder.`);
-    setTimeout(() => setCrateStatus(null), 8000);
+    setCrateStatus(null);
+    setImportGuide({ platform: 'serato', matched, total: tracks.length });
   };
 
   const handleExportRekordbox = async () => {
     if (!setlist) return;
+    setImportGuide(null);
     let library = getLibrary();
 
     // If localStorage is empty or stale, fetch fresh from Supabase
@@ -291,12 +295,13 @@ export function SetlistOutput() {
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'rekordbox-xml');
     if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
     downloadRekordboxXml(xml, setlist.name);
-    setCrateStatus(`Downloaded ${matched}/${setlist.tracks.length} tracks — in Rekordbox, click "rekordbox xml" in the left panel, expand Playlists, then drag the playlist into your Playlists.`);
-    setTimeout(() => setCrateStatus(null), 12000);
+    setCrateStatus(null);
+    setImportGuide({ platform: 'rekordbox-xml', matched, total: setlist.tracks.length });
   };
 
   const handleExportM3u = async () => {
     if (!setlist) return;
+    setImportGuide(null);
     let library = getLibrary();
 
     if (!library.length || !library.some(t => t.filePath)) {
@@ -341,8 +346,8 @@ export function SetlistOutput() {
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'm3u');
     if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
     downloadM3u(m3u, setlist.name);
-    setCrateStatus(`Downloaded ${matched}/${setlist.tracks.length} tracks — in Rekordbox go to File → Import → Import Playlist and select the .m3u file.`);
-    setTimeout(() => setCrateStatus(null), 10000);
+    setCrateStatus(null);
+    setImportGuide({ platform: 'rekordbox-m3u', matched, total: setlist.tracks.length });
   };
 
   const displayTracks = setlist
@@ -506,6 +511,17 @@ export function SetlistOutput() {
           }}>
             {crateStatus}
           </div>
+        )}
+
+        {importGuide && (
+          <ImportInstructions
+            platform={importGuide.platform}
+            name={setlist?.name ?? 'Your set'}
+            matched={importGuide.matched}
+            total={importGuide.total}
+            kind="set"
+            onDismiss={() => setImportGuide(null)}
+          />
         )}
 
         {showRegen && (
