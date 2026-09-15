@@ -2,7 +2,7 @@
 
 > **Purpose:** Single source of truth for writing accurate SetLab email campaigns (Loops).
 > Keep this current — update the "What's New" section whenever a feature ships.
-> Last updated: 2026-09-09.
+> Last updated: 2026-09-14.
 
 ---
 
@@ -90,6 +90,10 @@ Lead with the **benefit**, support with the **feature**.
 
 Most recent first. Convert these into "we just shipped…" emails.
 
+- **Step-by-step import guide after every export** — after downloading a Serato .crate, Rekordbox XML, or M3U playlist, a persistent "How to import" panel now tells you exactly where the file goes and what to do next (Serato: drop into Subcrates + restart; Rekordbox: Preferences → XML import; M3U: File → Import). Replaces the old toast that vanished in seconds. Crate exports get it too — previously there was no guidance at all.
+- **Set Builder front and centre on the dashboard** — the Set Builder is now the flagship card on your dashboard (bigger, with harmonic mixing / energy arc / do-not-repeat capabilities highlighted), and Crate Builder steps back to a clear secondary slot — so where to start for an upcoming gig is obvious at a glance.
+- **Serato exports now load with full metadata** — exported .crate files now correctly pair with your Serato library on import; every track loads with its BPM, key, artist, and genre instead of blank fields. *(Was a path-format bug that caused Serato to miss the library match entirely.)*
+- **Rekordbox exports now include Genre and Year** — genre and release year appear on every track when you import a SetLab set into Rekordbox, so your collection stays sortable and filterable the moment it lands in your crates.
 - **Smarter library re-sync** — re-importing your library now updates only what changed instead of rebuilding from scratch: it keeps your crates and enrichment intact, restores tracks that briefly went missing (e.g. an unplugged drive), and tells you exactly how many tracks were added, removed, or unchanged.
 - **Corporate-aware sets** — for corporate, wedding, radio, and lounge crowds the builder now steers clear of tracks whose *subject matter* isn't right for the room — not just the explicit versions, but the clean edits of songs that are still about the wrong things. It's a smart steer, not a guarantee, so the set comes with a reminder to give it a final read for your client.
 - **3-hour sets** — the set length now goes up to 180 minutes, for the long corporate, wedding, and residency slots.
