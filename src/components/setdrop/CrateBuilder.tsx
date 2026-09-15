@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { SD } from '@/lib/setdrop/constants';
 import { GenreCombobox, PageHeader } from '@/components/setdrop/shared';
 import { buildCrate, downloadCrate } from '@/lib/setdrop/serato-crate';
+import { ImportInstructions, type ImportPlatform } from './ImportInstructions';
 import {
   buildRekordboxXml,
   buildM3u,
@@ -127,6 +128,7 @@ export function CrateBuilder() {
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importGuide, setImportGuide] = useState<{ platform: ImportPlatform; matched: number; total: number } | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [activeCrate, setActiveCrate] = useState<ActiveCrate | null>(null);
   const [savedCrates, setSavedCrates] = useState<SavedCrate[]>([]);
@@ -250,6 +252,8 @@ export function CrateBuilder() {
     if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
     const data = buildCrate(paths);
     downloadCrate(data, activeCrate.name);
+    setError(null);
+    setImportGuide({ platform: 'serato', matched: paths.length, total: activeCrate.tracks.length });
   };
 
   const handleExportRekordbox = async () => {
@@ -261,6 +265,8 @@ export function CrateBuilder() {
     const gate = await gateExport('crate', activeCrate.id, 'rekordbox-xml');
     if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
     downloadRekordboxXml(xml, activeCrate.name);
+    setError(null);
+    setImportGuide({ platform: 'rekordbox-xml', matched, total: activeCrate.tracks.length });
   };
 
   const handleExportM3u = async () => {
@@ -272,6 +278,8 @@ export function CrateBuilder() {
     const gate = await gateExport('crate', activeCrate.id, 'm3u');
     if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
     downloadM3u(m3u, activeCrate.name);
+    setError(null);
+    setImportGuide({ platform: 'rekordbox-m3u', matched, total: activeCrate.tracks.length });
   };
 
   // Pagination
@@ -591,12 +599,21 @@ export function CrateBuilder() {
                 fontFamily: SD.mono, fontSize: SD.t10, color: SD.textMuted,
                 textAlign: 'right', lineHeight: 1.6,
               }}>
-                Serato: drop .crate into Music/_Serato_/Subcrates/
-                <br />
-                Rekordbox: File → Import → rekordbox xml / m3u playlist
+                Step-by-step import help appears after you export
               </div>
             </div>
           </div>
+
+          {importGuide && (
+            <ImportInstructions
+              platform={importGuide.platform}
+              name={activeCrate.name}
+              matched={importGuide.matched}
+              total={importGuide.total}
+              kind="crate"
+              onDismiss={() => setImportGuide(null)}
+            />
+          )}
 
           {/* Thin-match warning */}
           {warning && (
