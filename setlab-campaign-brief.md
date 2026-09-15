@@ -2,7 +2,7 @@
 
 > **Purpose:** Single source of truth for writing accurate SetLab email campaigns (Loops).
 > Keep this current — update the "What's New" section whenever a feature ships.
-> Last updated: 2026-09-14.
+> Last updated: 2026-09-15.
 
 ---
 
@@ -90,6 +90,7 @@ Lead with the **benefit**, support with the **feature**.
 
 Most recent first. Convert these into "we just shipped…" emails.
 
+- **Step-by-step import guide after every export** — after downloading a Serato .crate, Rekordbox XML, or M3U playlist, a persistent "How to import" panel now tells you exactly where the file goes and what to do next (Serato: drop into Subcrates + restart; Rekordbox: Preferences → XML import; M3U: File → Import). Replaces the old toast that vanished in seconds. Crate exports get it too — previously there was no guidance at all.
 - **Set Builder front and centre on the dashboard** — the Set Builder is now the flagship card on your dashboard (bigger, with harmonic mixing / energy arc / do-not-repeat capabilities highlighted), and Crate Builder steps back to a clear secondary slot — so where to start for an upcoming gig is obvious at a glance.
 - **Serato exports now load with full metadata** — exported .crate files now correctly pair with your Serato library on import; every track loads with its BPM, key, artist, and genre instead of blank fields. *(Was a path-format bug that caused Serato to miss the library match entirely.)*
 - **Rekordbox exports now include Genre and Year** — genre and release year appear on every track when you import a SetLab set into Rekordbox, so your collection stays sortable and filterable the moment it lands in your crates.
