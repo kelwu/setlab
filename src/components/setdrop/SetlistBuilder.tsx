@@ -692,14 +692,14 @@ export function SetlistBuilder() {
             <span style={{ fontFamily:SD.mono, fontSize:12, color: libraryCount ? SD.text : SD.textMuted }}>
               {libraryCount
                 ? `Building from your library — ${libraryCount.toLocaleString()} tracks`
-                : 'No library uploaded — will use demo tracks'}
+                : 'Demo mode — sample tracks. Import your library for a real, exportable set.'}
             </span>
           </div>
           <span onClick={() => router.push('/library')} style={{
             fontFamily:SD.mono, fontSize:12, letterSpacing:1.5, textTransform:'uppercase',
             color:SD.accent, cursor:'pointer', textDecoration:'underline',
           }}>
-            {libraryCount ? 'Manage Library' : 'Upload CSV →'}
+            {libraryCount ? 'Manage Library' : 'Upload your library →'}
           </span>
         </div>
 

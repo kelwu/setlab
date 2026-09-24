@@ -29,7 +29,7 @@ ${list}
 Return ONLY a JSON array with one object per track in order:
 [{"bpm": 128, "key": "8A"}, {"bpm": 95, "key": "2B"}, ...]`,
     }],
-  }, { timeout: 120_000 });
+  }, { timeout: 120_000, maxRetries: 0 });
   onUsage?.(usageFrom(MODEL, msg));
 
   const text = msg.content.find(b => b.type === 'text')?.text ?? '';
@@ -108,6 +108,7 @@ export async function POST() {
       const batch = libToEnrich.slice(i, i + BATCH);
       const results = await lookupBpmKey(
         batch.map(t => ({ id: t.id, artist: t.artist ?? '', title: t.title ?? '' })),
+        pushUsage,
       );
       await Promise.all(results.map(async (r) => {
         const orig = batch.find(t => t.id === r.id);

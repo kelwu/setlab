@@ -6,6 +6,10 @@ import { loopsCreateContact, loopsSendEvent, updateLoopsContact } from '@/lib/em
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  // Preserve the user's original destination (e.g. /builder) through OAuth login.
+  // Only accept same-origin absolute paths to avoid open-redirect abuse.
+  const nextParam = searchParams.get('next')
+  const safeNext = nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null
 
   if (code) {
     const cookieStore = await cookies()
@@ -40,7 +44,10 @@ export async function GET(request: Request) {
         });
       }
 
-      const dest = isNewUser ? `${origin}/dashboard?new_user=1` : `${origin}/dashboard`;
+      const base = safeNext ?? '/dashboard';
+      const dest = isNewUser
+        ? `${origin}${base}${base.includes('?') ? '&' : '?'}new_user=1`
+        : `${origin}${base}`;
       return NextResponse.redirect(dest);
     }
   }

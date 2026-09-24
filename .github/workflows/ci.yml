@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Typecheck is the hard gate — it's clean today and catches the main
+      # regression risk. Two deliberate follow-ups before they can gate:
+      #   * `npm run lint` currently has a pre-existing backlog of errors, so it
+      #     runs here as non-blocking until that's cleaned up.
+      #   * Full `next build` needs Supabase/Anthropic build-time env — add those
+      #     as repo secrets + a build step later.
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint (non-blocking until backlog cleared)
+        run: npm run lint
+        continue-on-error: true
