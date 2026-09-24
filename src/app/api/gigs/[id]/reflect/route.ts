@@ -216,7 +216,7 @@ Produce a factual diff. Match tracks by artist/title similarity. "matched" = sam
     messages: [{ role: 'user', content: userMsg }],
     tools: [REFLECT_TOOL],
     tool_choice: { type: 'tool', name: 'generate_reflection' },
-  }, { timeout: 55_000 });
+  }, { timeout: 55_000, maxRetries: 0 });
   await recordCost(user.id, 'gig-reflect', usageFrom(MODEL, msg));
 
   const block = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use');

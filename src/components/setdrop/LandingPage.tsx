@@ -52,7 +52,7 @@ export function LandingPage() {
           }}>
             Log In
           </a>
-          <a href="/login" className="sd-landing-signup" style={{
+          <a href="/login?mode=signup" className="sd-landing-signup" style={{
             fontFamily:SD.mono, fontSize:13, letterSpacing:1, fontWeight:600,
             color:'#000', background:SD.accent,
             padding:'8px 18px', borderRadius:3, whiteSpace:'nowrap',
@@ -200,7 +200,7 @@ export function LandingPage() {
 
           <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap',
             animation:'sdFadeUp 0.6s 0.6s ease both' }}>
-            <SDButton href="/builder" style={{ fontSize:13, padding:'14px 36px' }}>
+            <SDButton href="/login?mode=signup&redirect=/builder" style={{ fontSize:13, padding:'14px 36px' }}>
               Start Building Your Set
             </SDButton>
             <SDButton ghost href="#demo" style={{ fontSize:13, padding:'14px 36px' }}>
@@ -391,7 +391,7 @@ export function LandingPage() {
           </ScrollFade>
 
           <div style={{ textAlign:'center', marginTop:40 }}>
-            <SDButton href="/builder">Build Your Own Set</SDButton>
+            <SDButton href="/login?mode=signup&redirect=/builder">Build Your Own Set</SDButton>
           </div>
         </div>
       </section>
@@ -466,7 +466,7 @@ export function LandingPage() {
                 ))}
               </ul>
 
-              <SDButton ghost href="/login" full style={{ fontSize:12 }}>
+              <SDButton ghost href="/login?mode=signup" full style={{ fontSize:12 }}>
                 Get Started Free
               </SDButton>
             </ScrollFade>
@@ -512,7 +512,7 @@ export function LandingPage() {
                 ))}
               </ul>
 
-              <SDButton href="/login" full style={{ fontSize:12 }}>
+              <SDButton href="/login?mode=signup" full style={{ fontSize:12 }}>
                 Get Started — $12/mo
               </SDButton>
             </ScrollFade>
@@ -570,7 +570,7 @@ export function LandingPage() {
             margin:'0 auto 48px', maxWidth:480, lineHeight:1.8 }}>
             Upload your library and start planning your next set. Free to start.
           </p>
-          <SDButton href="/builder" style={{ fontSize:14, padding:'16px 48px' }}>
+          <SDButton href="/login?mode=signup&redirect=/builder" style={{ fontSize:14, padding:'16px 48px' }}>
             Get Started — It&apos;s Free
           </SDButton>
           <div style={{ marginTop:20, fontFamily:SD.mono, fontSize:12, color:SD.textMuted }}>{BRAND.domain}</div>

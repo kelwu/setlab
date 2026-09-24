@@ -105,7 +105,7 @@ Only include tracks you are genuinely confident feature this word in their lyric
       model: 'claude-sonnet-4-6',
       max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }],
-    }, { timeout: 50_000 });
+    }, { timeout: 50_000, maxRetries: 0 });
     await recordCost(user.id, 'wordplay-search', usageFrom('claude-sonnet-4-6', msg));
 
     const text = msg.content.find(b => b.type === 'text')?.text ?? '';

@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [redirectPath, setRedirectPath] = useState('/dashboard');
   const router = useRouter();
   const supabase = createClient();
 
@@ -21,8 +22,12 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('error') === 'auth_failed') setError('Authentication failed. Please try again.');
     if (params.get('mode') === 'signup') setMode('signup');
+    // Preserve the destination the user came from (e.g. /builder). Same-origin paths only.
+    const r = params.get('redirect');
+    const safeR = r && r.startsWith('/') && !r.startsWith('//') ? r : null;
+    if (safeR) setRedirectPath(safeR);
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) router.replace('/dashboard');
+      if (user) router.replace(safeR ?? '/dashboard');
     });
   }, []);
 
@@ -31,7 +36,7 @@ export default function LoginPage() {
     setError('');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/api/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(redirectPath)}` },
     });
     if (error) { setError(error.message); setLoading(false); }
   };
@@ -47,7 +52,7 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
+        options: { emailRedirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(redirectPath)}` },
       });
       if (error) setError(error.message);
       // If email confirmation is disabled, signUp returns a live session — log in
@@ -55,13 +60,13 @@ export default function LoginPage() {
       else if (data.session) {
         trackEvent.signUp('email');
         fetch('/api/auth/welcome', { method: 'POST' }).catch(() => {});
-        router.push('/dashboard');
+        router.push(redirectPath);
       }
       else { trackEvent.signUp('email'); setMessage('Check your email for a confirmation link.'); }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
-      else router.push('/dashboard');
+      else router.push(redirectPath);
     }
 
     setLoading(false);
