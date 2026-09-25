@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   let stream: ReturnType<ReturnType<typeof getAnthropic>['messages']['stream']>;
   try {
     stream = getAnthropic().messages.stream({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-haiku-4-5',
       max_tokens: 400,
       system: SYSTEM_PROMPT,
       messages: convo,

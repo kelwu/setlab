@@ -9,7 +9,7 @@ import { superFamily, genreRelevance, passesGenreGate } from '@/lib/setdrop/genr
 
 export const maxDuration = 60;
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5';
 // Default crate size when the client doesn't request a specific count. Keeps a
 // broad prompt (e.g. a genre with hundreds of matches) from producing an
 // unusable, uncurated crate. A client sending targetCount: 0 means "no cap".
@@ -374,6 +374,7 @@ export async function POST(req: NextRequest) {
       messages: [{ role: 'user', content: userMsg }],
       tools: [PROFILE_TOOL],
       tool_choice: { type: 'tool', name: 'parse_crate_prompt' },
+      thinking: { type: 'disabled' as const },
     }, { timeout: 45_000, maxRetries: 0 });
     await recordCost(user.id, 'crates-generate', usageFrom(MODEL, msg));
 

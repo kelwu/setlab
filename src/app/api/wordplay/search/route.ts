@@ -102,11 +102,12 @@ Output ONLY valid JSON:
 Only include tracks you are genuinely confident feature this word in their lyrics. Do not guess. Pairs should only be formed from tracks already in the matches list.`;
 
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-5',
       max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }],
+      thinking: { type: 'disabled' as const },
     }, { timeout: 50_000, maxRetries: 0 });
-    await recordCost(user.id, 'wordplay-search', usageFrom('claude-sonnet-4-6', msg));
+    await recordCost(user.id, 'wordplay-search', usageFrom('claude-sonnet-5', msg));
 
     const text = msg.content.find(b => b.type === 'text')?.text ?? '';
     const match = text.match(/```(?:json)?\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/);
