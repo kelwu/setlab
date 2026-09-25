@@ -62,6 +62,7 @@ export async function usageToday(userId: string, endpoint: string): Promise<numb
 // Per-token USD prices by model + web-search per-search price. Keep in sync with
 // https://platform.claude.com/docs/en/pricing and the web search tool ($10/1k).
 const TOKEN_PRICE: Record<string, { in: number; out: number }> = {
+  'claude-sonnet-5': { in: 2 / 1_000_000, out: 10 / 1_000_000 },
   'claude-sonnet-4-6': { in: 3 / 1_000_000, out: 15 / 1_000_000 },
   'claude-haiku-4-5': { in: 1 / 1_000_000, out: 5 / 1_000_000 },
   'claude-haiku-4-5-20251001': { in: 1 / 1_000_000, out: 5 / 1_000_000 },

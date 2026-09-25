@@ -6,7 +6,7 @@ import { getAnthropic } from '@/lib/anthropic';
 
 export const maxDuration = 60;
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5';
 
 interface PlannedTrack {
   position: number;
@@ -216,6 +216,7 @@ Produce a factual diff. Match tracks by artist/title similarity. "matched" = sam
     messages: [{ role: 'user', content: userMsg }],
     tools: [REFLECT_TOOL],
     tool_choice: { type: 'tool', name: 'generate_reflection' },
+    thinking: { type: 'disabled' as const },
   }, { timeout: 55_000, maxRetries: 0 });
   await recordCost(user.id, 'gig-reflect', usageFrom(MODEL, msg));
 

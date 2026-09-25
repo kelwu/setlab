@@ -114,7 +114,7 @@ async function searchPool(
 
   try {
     const msg = await anthropic().messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-haiku-4-5',
       max_tokens: 64,
       messages: [{ role: 'user', content: `"${artist}" "${title}"` }],
       tools: [{
@@ -125,7 +125,7 @@ async function searchPool(
       } as Anthropic.Messages.WebSearchTool20260209],
       tool_choice: { type: 'any' },
     }, { timeout: 15_000 });
-    onUsage?.(usageFrom('claude-haiku-4-5-20251001', msg));
+    onUsage?.(usageFrom('claude-haiku-4-5', msg));
 
     let result: { url?: string; found: boolean } = { found: false };
     for (const block of msg.content) {

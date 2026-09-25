@@ -6,7 +6,7 @@ import { recordCost, usageFrom, type CallUsage } from '@/lib/api-usage';
 
 export const maxDuration = 300;
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5';
 
 async function lookupBpmKey(
   tracks: Array<{ id: string; artist: string; title: string }>,
@@ -29,6 +29,7 @@ ${list}
 Return ONLY a JSON array with one object per track in order:
 [{"bpm": 128, "key": "8A"}, {"bpm": 95, "key": "2B"}, ...]`,
     }],
+    thinking: { type: 'disabled' as const },
   }, { timeout: 120_000, maxRetries: 0 });
   onUsage?.(usageFrom(MODEL, msg));
 

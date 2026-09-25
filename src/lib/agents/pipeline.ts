@@ -29,10 +29,10 @@ function stripLeaked(s: string, fallback: string): string {
   return kept || fallback;
 }
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5';
 // The per-track notes are descriptive text, not the creative selection, so they
 // run on the cheaper/faster Haiku in a parallel second stage (see runNotesStage).
-const NOTES_MODEL = 'claude-haiku-4-5-20251001';
+const NOTES_MODEL = 'claude-haiku-4-5';
 const MAX_SELECTOR_TRACKS = 200;
 
 // The route runs with maxDuration = 300s. Abort the whole pipeline before that
@@ -192,6 +192,11 @@ async function callWithTool<T>(
     messages: [{ role: 'user', content: userMessage }],
     tools: [tool],
     tool_choice: { type: 'tool', name: tool.name },
+    // Sonnet 5 runs adaptive thinking when `thinking` is omitted; keep it off to
+    // preserve the pre-migration latency/cost profile. (Extended thinking for the
+    // selector is a separate, measured change.) Haiku (notes stage) doesn't take
+    // this param, so only send it for non-Haiku models.
+    ...(model.includes('haiku') ? {} : { thinking: { type: 'disabled' as const } }),
   }, { signal: options.signal, timeout: options.timeout, maxRetries: 0 });
   options.onUsage?.(usageFrom(model, msg));
 
@@ -448,6 +453,7 @@ Gig context:
     messages: [{ role: 'user', content: userMessage }],
     tools: [GIG_BLUEPRINT_TOOL],
     tool_choice: { type: 'tool', name: 'generate_gig_blueprint' },
+    thinking: { type: 'disabled' as const },
   }, { signal, timeout: BLUEPRINT_TIMEOUT_MS, maxRetries: 0 });
   onUsage?.(usageFrom(MODEL, res));
 

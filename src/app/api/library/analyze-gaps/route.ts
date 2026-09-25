@@ -6,7 +6,7 @@ import { getAnthropic } from '@/lib/anthropic';
 
 export const maxDuration = 300;
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5';
 
 const BPM_BUCKETS = [
   { label: '60–79', min: 60, max: 79 },
@@ -353,7 +353,8 @@ async function fetchBpmGapRecs(rawGaps: RawGap[], onUsage?: (u: CallUsage) => vo
     messages: [{ role: 'user', content: userMsg }],
     tools: [GAP_TOOL],
     tool_choice: { type: 'tool', name: 'report_library_gaps' },
-  }, { timeout: 120_000 });
+    thinking: { type: 'disabled' as const },
+  }, { timeout: 120_000, maxRetries: 0 });
   onUsage?.(usageFrom(MODEL, msg));
 
   const block = msg.content.find(
@@ -380,7 +381,8 @@ async function fetchEmergingArtists(
     messages: [{ role: 'user', content: userMsg }],
     tools: [EMERGING_TOOL],
     tool_choice: { type: 'tool', name: 'report_emerging_artists' },
-  }, { timeout: 120_000 });
+    thinking: { type: 'disabled' as const },
+  }, { timeout: 120_000, maxRetries: 0 });
   onUsage?.(usageFrom(MODEL, msg));
 
   const block = msg.content.find(
