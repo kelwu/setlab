@@ -56,6 +56,10 @@ A SETLIST is a full, ordered performance plan for one specific gig. You give the
 Simple way to remember it: a crate is the record bag; a setlist is the set you play out of it. A crate answers "which of my tracks fit this vibe?"; a setlist answers "in what order do I play them for this gig?" Both are AI-generated from your own library and both export to Serato (.crate), Rekordbox XML, or M3U.`,
   },
   {
+    category: 'set_length',
+    content: `Set length is controlled by the Duration you choose in Plan Set: 30, 60, 90, 120, 180, or 240 minutes (up to 4 hours). SetLab paces the number of tracks to the duration and genre — about one track every ~3 minutes for house/electronic, ~2.5 minutes for open-format (hip-hop/top 40/mashups), and ~4 minutes for lounge/downtempo (it accounts for how long each track actually plays once you blend). So a 3-hour house set is ~60 tracks and a 4-hour house set is ~80 tracks. To get MORE songs in a set, pick a LONGER duration — a longer duration means more tracks, a shorter one fewer. 240 minutes (4 hours) is the current maximum duration; there's no way to exceed it yet. (The track count also can't exceed how many suitable tracks are in your library.)`,
+  },
+  {
     category: 'export',
     content: `SetLab exports to three formats:
 - Serato .crate — download and load directly in Serato DJ

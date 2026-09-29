@@ -555,9 +555,10 @@ ${JSON.stringify(tracks.map(t => ({
     // Compact output (ids only), but a long set is ~90-130 tokens/track once you
     // count UUID ids + reviewNotes, so a 120-min (~30 track) set needs headroom —
     // 2048 truncated large sets into an empty tracks array. A 180-min set is ~60-72
-    // tracks, so 8192 is no longer safe; 16384 covers the longest set. The model
-    // stops at tool completion, so this doesn't slow normal sets.
-    16384,
+    // tracks and a 240-min (4-hour) set is ~80-96, so 8192/16384 are no longer safe;
+    // 24576 covers the longest set. The model stops at tool completion, so this
+    // doesn't slow normal sets.
+    24576,
     { signal, timeout: SELECTOR_TIMEOUT_MS, onUsage },
   );
   if (!selection?.tracks?.length) {
