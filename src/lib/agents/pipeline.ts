@@ -555,10 +555,13 @@ ${JSON.stringify(tracks.map(t => ({
     // Compact output (ids only), but a long set is ~90-130 tokens/track once you
     // count UUID ids + reviewNotes, so a 120-min (~30 track) set needs headroom —
     // 2048 truncated large sets into an empty tracks array. A 180-min set is ~60-72
-    // tracks and a 240-min (4-hour) set is ~80-96, so 8192/16384 are no longer safe;
-    // 24576 covers the longest set. The model stops at tool completion, so this
-    // doesn't slow normal sets.
-    24576,
+    // tracks and a 240-min (4-hour) set is ~80-96; compact ids-only output is
+    // ~130 tokens/track, so ~96 tracks needs ~12.5k. HARD CEILING: this call is
+    // non-streaming, and the SDK rejects non-streaming max_tokens > 21333
+    // ((60min * max_tokens)/128000 must be <= 10min). 20000 gives headroom for the
+    // longest set while staying under that ceiling; going higher would require
+    // switching this call to streaming (.stream + getFinalMessage).
+    20000,
     { signal, timeout: SELECTOR_TIMEOUT_MS, onUsage },
   );
   if (!selection?.tracks?.length) {
