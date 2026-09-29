@@ -445,7 +445,7 @@ export function SetlistBuilder() {
           primary_genre: primaryGenre || null,
           secondary_genre: secondaryGenre || null,
           crowd_context: crowdVal,
-          duration_minutes: durationMinutes as 30 | 60 | 90 | 120 | 180,
+          duration_minutes: durationMinutes as 30 | 60 | 90 | 120 | 180 | 240,
           lineup_slot: slotVal,
           energy_arc: { intro: arcPoints[0], buildup: arcPoints[1], peak: arcPoints[2], sustain: arcPoints[3], cooldown: arcPoints[4] },
           is_public: false,
