@@ -140,7 +140,10 @@ export function buildM3u(
     lines.push(toM3uPath(found.filePath));
     matched++;
   }
-  return { m3u: lines.join('\n'), matched, skipped };
+  // CRLF line endings + trailing newline: the M3U de-facto standard uses CRLF, and
+  // several Windows DJ apps (and strict parsers) mishandle LF-only files. Keeps the
+  // playlist portable across players, which is the main reason to pick M3U over XML.
+  return { m3u: lines.join('\r\n') + '\r\n', matched, skipped };
 }
 
 export function downloadM3u(m3u: string, name: string): void {
