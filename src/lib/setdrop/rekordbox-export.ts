@@ -1,6 +1,7 @@
 import { LibraryTrack } from '@/lib/agents/types';
 import { SetlistTrack } from '@/lib/agents/types';
 import { BRAND } from '../brand';
+import { isLocalFilePath } from './file-path';
 
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -33,8 +34,12 @@ function toRekordboxLocation(filePath: string): string {
   }
   // Ensure leading slash
   if (!path.startsWith('/')) path = '/' + path;
-  // Encode every segment — handles #, %, &, spaces, parens, apostrophes, etc.
-  const encoded = path.split('/').map(seg => seg === '' ? '' : encodeURIComponent(seg)).join('/');
+  // Encode every segment — handles #, %, &, spaces, parens, apostrophes, etc. — but
+  // keep a Windows drive letter's colon literal: encodeURIComponent turns "C:" into
+  // "C%3A", which Rekordbox can't resolve back to a real file path.
+  const encoded = path.split('/')
+    .map(seg => (seg === '' ? '' : /^[A-Za-z]:$/.test(seg) ? seg : encodeURIComponent(seg)))
+    .join('/');
   return 'file://localhost' + encoded;
 }
 
@@ -50,7 +55,7 @@ export function buildRekordboxXml(
   setlistName: string,
   tracks: SetlistTrack[],
   library: LibraryTrack[],
-): { xml: string; matched: number } {
+): { xml: string; matched: number; skipped: number } {
   // Match setlist tracks to library file paths. We also carry the matched library
   // track's genre/year: the SetlistTrack itself has neither (see types.ts), but the
   // Rekordbox XML embeds metadata inline, so pulling them from the library entry is
@@ -71,7 +76,12 @@ export function buildRekordboxXml(
     }
   }
 
-  const collectionEntries = matched.map(({ track, filePath, genre, year, id }) => {
+  // Skip streaming references (SoundCloud/TIDAL/etc.) — they have no local file to
+  // point Rekordbox at, so including them produces broken "missing file" entries.
+  const exportable = matched.filter(m => isLocalFilePath(m.filePath));
+  const skipped = matched.length - exportable.length;
+
+  const collectionEntries = exportable.map(({ track, filePath, genre, year, id }) => {
     const location = toRekordboxLocation(filePath);
     return `    <TRACK TrackID="${id}" Name="${escapeXml(track.title)}" Artist="${escapeXml(track.artist)}" `
       + `TotalTime="0" DiscNumber="0" TrackNumber="0" Year="${escapeXml(year)}" Genre="${escapeXml(genre)}" Album="" `
@@ -80,26 +90,26 @@ export function buildRekordboxXml(
       + `Label="" Mix=""/>`;
   }).join('\n');
 
-  const playlistTracks = matched
+  const playlistTracks = exportable
     .map(({ id }) => `        <TRACK Key="${id}"/>`)
     .join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <DJ_PLAYLISTS Version="1.0.0">
   <PRODUCT Name="rekordbox" Version="6.0.0" Company="AlphaTheta"/>
-  <COLLECTION Entries="${matched.length}">
+  <COLLECTION Entries="${exportable.length}">
 ${collectionEntries}
   </COLLECTION>
   <PLAYLISTS>
-    <NODE Type="0" Name="ROOT">
-      <NODE Name="${escapeXml(setlistName)}" Type="1" Count="${matched.length}">
+    <NODE Type="0" Name="ROOT" Count="1">
+      <NODE Name="${escapeXml(setlistName)}" Type="1" KeyType="0" Entries="${exportable.length}">
 ${playlistTracks}
       </NODE>
     </NODE>
   </PLAYLISTS>
 </DJ_PLAYLISTS>`;
 
-  return { xml, matched: matched.length };
+  return { xml, matched: exportable.length, skipped };
 }
 
 // --- M3U export (simpler Rekordbox import: File → Import → Import Playlist) ---
@@ -118,17 +128,19 @@ export function buildM3u(
   setlistName: string,
   tracks: SetlistTrack[],
   library: LibraryTrack[],
-): { m3u: string; matched: number } {
+): { m3u: string; matched: number; skipped: number } {
   const lines = ['#EXTM3U', `#PLAYLIST:${setlistName}`];
   let matched = 0;
+  let skipped = 0;
   for (const t of tracks) {
     const found = findLibraryTrack(t.artist, t.title, library);
     if (!found?.filePath) continue;
+    if (!isLocalFilePath(found.filePath)) { skipped++; continue; } // streaming ref — no local file
     lines.push(`#EXTINF:-1,${t.artist} - ${t.title}`);
     lines.push(toM3uPath(found.filePath));
     matched++;
   }
-  return { m3u: lines.join('\n'), matched };
+  return { m3u: lines.join('\n'), matched, skipped };
 }
 
 export function downloadM3u(m3u: string, name: string): void {
