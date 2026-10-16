@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { SD } from '@/lib/setdrop/constants';
 import { GenreCombobox, PageHeader } from '@/components/setdrop/shared';
 import { buildCrate, downloadCrate } from '@/lib/setdrop/serato-crate';
+import { isLocalFilePath } from '@/lib/setdrop/file-path';
 import { ImportInstructions, type ImportPlatform } from './ImportInstructions';
 import {
   buildRekordboxXml,
@@ -246,8 +247,8 @@ export function CrateBuilder() {
   // Export handlers — gate against the monthly export limit before downloading.
   const handleExportSerato = async () => {
     if (!activeCrate) return;
-    const paths = activeCrate.tracks.map(t => t.filePath).filter((p): p is string => Boolean(p));
-    if (!paths.length) { setError('No file paths available — library may need re-sync'); return; }
+    const paths = activeCrate.tracks.map(t => t.filePath).filter((p): p is string => Boolean(p) && isLocalFilePath(p));
+    if (!paths.length) { setError('No local files to export — streaming tracks (SoundCloud/TIDAL/etc.) can’t export, and your library may need re-sync'); return; }
     const gate = await gateExport('crate', activeCrate.id, 'serato-crate');
     if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
     const data = buildCrate(paths);

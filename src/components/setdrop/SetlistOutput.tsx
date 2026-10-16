@@ -6,6 +6,7 @@ import { SD, SAMPLE_TRACKS } from '@/lib/setdrop/constants';
 import { GeneratedSetlist, SetlistTrack, LibraryTrack } from '@/lib/agents/types';
 import { buildCrate, downloadCrate } from '@/lib/setdrop/serato-crate';
 import { buildRekordboxXml, downloadRekordboxXml, buildM3u, downloadM3u } from '@/lib/setdrop/rekordbox-export';
+import { isLocalFilePath } from '@/lib/setdrop/file-path';
 import { createClient } from '@/lib/supabase/client';
 import { SDButton } from './shared';
 import { SetView, toDisplayTracks, type ResolvedUrls } from './SetView';
@@ -39,6 +40,13 @@ function matchFilePaths(tracks: SetlistTrack[], library: LibraryTrack[]): { path
   }
   return { paths, matched: paths.length };
 }
+
+// Short status note when some tracks can't export because they're streaming refs
+// (Rekordbox SoundCloud/TIDAL/etc.) rather than local files you own.
+const streamingNote = (n: number) =>
+  `${n} streaming track${n === 1 ? '' : 's'} (SoundCloud/TIDAL/etc.) couldn't be exported — only tracks you own as files are included.`;
+const ALL_STREAMING_MSG =
+  'These tracks are streaming (SoundCloud/TIDAL/etc.) — SetLab can only export tracks you own as local files.';
 
 // Merge the async-resolved store URLs + confidence into the saved tracks so a
 // set persists what the owner saw. Only wishlist tracks carry the extra pools;
@@ -229,22 +237,24 @@ export function SetlistOutput() {
 
     if (!library.length) { setCrateStatus('Upload your Serato library first so we can match file paths.'); return; }
     const tracks = libraryOnly ? setlist.tracks.filter(t => !t.isWishlistTrack) : setlist.tracks;
-    const { paths, matched } = matchFilePaths(tracks, library);
-    if (!paths.length) {
+    const { paths } = matchFilePaths(tracks, library);
+    const localPaths = paths.filter(isLocalFilePath);
+    const skipped = paths.length - localPaths.length;
+    if (!localPaths.length) {
       const anyFound = tracks.some(t => library.find(l =>
         l.artist.toLowerCase() === t.artist.toLowerCase() && l.title.toLowerCase() === t.title.toLowerCase()
       ));
-      setCrateStatus(anyFound
+      setCrateStatus(skipped > 0 ? ALL_STREAMING_MSG : anyFound
         ? 'Tracks found but no file paths — re-upload your Serato DB V2 file to restore export.'
         : 'No tracks matched. Re-upload your Serato DB V2 file.');
       return;
     }
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'serato-crate');
     if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
-    const data = buildCrate(paths);
+    const data = buildCrate(localPaths);
     downloadCrate(data, setlist.name);
-    setCrateStatus(null);
-    setImportGuide({ platform: 'serato', matched, total: tracks.length });
+    setCrateStatus(skipped > 0 ? streamingNote(skipped) : null);
+    setImportGuide({ platform: 'serato', matched: localPaths.length, total: tracks.length });
   };
 
   const handleExportRekordbox = async () => {
@@ -290,12 +300,15 @@ export function SetlistOutput() {
 
     if (!library.length) { setCrateStatus('Upload your library first so we can match file paths.'); return; }
     const tracks = libraryOnly ? setlist.tracks.filter(t => !t.isWishlistTrack) : setlist.tracks;
-    const { xml, matched } = buildRekordboxXml(setlist.name, tracks, library);
-    if (!matched) { setCrateStatus('No tracks matched. Re-upload your library file in the Library tab.'); return; }
+    const { xml, matched, skipped } = buildRekordboxXml(setlist.name, tracks, library);
+    if (!matched) {
+      setCrateStatus(skipped > 0 ? ALL_STREAMING_MSG : 'No tracks matched. Re-upload your library file in the Library tab.');
+      return;
+    }
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'rekordbox-xml');
     if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
     downloadRekordboxXml(xml, setlist.name);
-    setCrateStatus(null);
+    setCrateStatus(skipped > 0 ? streamingNote(skipped) : null);
     setImportGuide({ platform: 'rekordbox-xml', matched, total: setlist.tracks.length });
   };
 
@@ -341,12 +354,15 @@ export function SetlistOutput() {
 
     if (!library.length) { setCrateStatus('Upload your library first so we can match file paths.'); return; }
     const tracks = libraryOnly ? setlist.tracks.filter(t => !t.isWishlistTrack) : setlist.tracks;
-    const { m3u, matched } = buildM3u(setlist.name, tracks, library);
-    if (!matched) { setCrateStatus('No tracks matched. Re-upload your library file in the Library tab.'); return; }
+    const { m3u, matched, skipped } = buildM3u(setlist.name, tracks, library);
+    if (!matched) {
+      setCrateStatus(skipped > 0 ? ALL_STREAMING_MSG : 'No tracks matched. Re-upload your library file in the Library tab.');
+      return;
+    }
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'm3u');
     if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
     downloadM3u(m3u, setlist.name);
-    setCrateStatus(null);
+    setCrateStatus(skipped > 0 ? streamingNote(skipped) : null);
     setImportGuide({ platform: 'rekordbox-m3u', matched, total: setlist.tracks.length });
   };
 
