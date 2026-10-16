@@ -6,15 +6,15 @@ import { SD } from '@/lib/setdrop/constants';
 // Bump VERSION whenever the items below change — a user who has dismissed an older
 // version will see the modal again for the new one (localStorage stores the last
 // version seen). Keep items DJ-facing: the benefit, not the internals.
-const VERSION = '2026-09';
+const VERSION = '2026-10';
 const STORAGE_KEY = 'sd_whatsnew_seen';
 
 const ITEMS: { title: string; desc: string }[] = [
-  { title: '3-hour sets', desc: 'Set length now goes up to 180 minutes — for the long corporate, wedding, and residency slots.' },
+  { title: 'Auto-tag your genres', desc: 'Imported a library with blank genres? One click in Library fills in genre — plus any missing BPM and key — so genre-based sets and crates just work.' },
+  { title: 'Exports that import clean', desc: 'Rekordbox and M3U exports now land as a full playlist with every track you own linked. Streaming-only tracks that can’t live in a DJ app are flagged and skipped instead of silently leaving you an empty import.' },
+  { title: '4-hour sets', desc: 'Set length now goes up to 240 minutes — for the long wedding, corporate, and residency slots.' },
   { title: 'Clean-only sets', desc: 'One toggle keeps a set corporate- and radio-safe by leaving explicit versions out of the pool.' },
   { title: 'Corporate-aware sets', desc: 'For corporate, wedding, radio, and lounge crowds, the builder now steers clear of tracks whose subject matter isn’t right for the room — not just the explicit versions.' },
-  { title: 'Smarter library re-sync', desc: 'Re-importing your library now updates only what changed, so your crates and track data stay intact.' },
-  { title: 'Full-detail exports', desc: 'Sets exported to Serato and Rekordbox now carry complete track info — BPM, key, artist, and genre.' },
 ];
 
 export function WhatsNewModal() {
