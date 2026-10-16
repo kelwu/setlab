@@ -1505,8 +1505,12 @@ export function Library() {
         {/* Library tab enrichment actions */}
         {tab === 'library' && uploadedTracks && (() => {
           const missingBpmKey = uploadedTracks.filter(t => !t.isWishlist && (!t.bpm || !t.key));
+          const missingGenre = uploadedTracks.filter(t => !t.isWishlist && !t.genre?.trim());
           const untagged = uploadedTracks.filter(t => !t.isWishlist && (!t.lastfmTags || t.lastfmTags.length === 0));
-          if (!missingBpmKey.length && !untagged.length) return null;
+          // BPM/key and genre are both filled by the same enrich call, so one button covers them.
+          const needsMeta = uploadedTracks.filter(t => !t.isWishlist && (!t.bpm || !t.key || !t.genre?.trim()));
+          if (!needsMeta.length && !untagged.length) return null;
+          const metaFields = [missingBpmKey.length ? 'BPM/Key' : '', missingGenre.length ? 'Genre' : ''].filter(Boolean).join(' & ');
           return (
             <div style={{ marginTop:24, padding:'16px 20px',
               background:SD.surface, border:`1px solid ${SD.border}`,
@@ -1519,6 +1523,7 @@ export function Library() {
                 <div style={{ fontFamily:SD.mono, fontSize:13, color:SD.textMuted }}>
                   {[
                     missingBpmKey.length ? `${missingBpmKey.length} tracks missing BPM/key` : '',
+                    missingGenre.length ? `${missingGenre.length} tracks missing genre` : '',
                     untagged.length ? `${untagged.length} tracks without mood tags` : '',
                   ].filter(Boolean).join(' · ')}
                 </div>
@@ -1531,11 +1536,11 @@ export function Library() {
                     {enriching ? 'Fetching Tags...' : `Tag ${untagged.length} Tracks`}
                   </SDButton>
                 )}
-                {missingBpmKey.length > 0 && (
+                {needsMeta.length > 0 && (
                   <SDButton ghost style={{ fontSize:12 }}
                     onClick={triggerBpmKeyEnrichment}
                     disabled={enrichingBpmKey}>
-                    {enrichingBpmKey ? 'Looking up BPM/Key...' : `Fill ${missingBpmKey.length} Missing BPM/Key`}
+                    {enrichingBpmKey ? 'Looking up...' : `Fill ${needsMeta.length} Missing ${metaFields}`}
                   </SDButton>
                 )}
               </div>
