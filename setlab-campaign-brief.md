@@ -2,7 +2,7 @@
 
 > **Purpose:** Single source of truth for writing accurate SetLab email campaigns (Loops).
 > Keep this current — update the "What's New" section whenever a feature ships.
-> Last updated: 2026-09-14.
+> Last updated: 2026-10-16.
 
 ---
 
@@ -90,6 +90,8 @@ Lead with the **benefit**, support with the **feature**.
 
 Most recent first. Convert these into "we just shipped…" emails.
 
+- **Rekordbox & M3U exports now import a populated playlist** — fixed a bug where an exported Rekordbox playlist could import completely empty; your set now lands as a full playlist with every owned track linked. Streaming-only tracks (SoundCloud/TIDAL/etc.) that can't live in a DJ app are now flagged and skipped with a count instead of silently producing an empty file, and M3U exports use standard line endings for clean imports across DJ apps. *(Verified by a real Rekordbox user importing a rebuilt set.)*
+- **Auto-tag missing genres (and BPM/key) in one click** — if your Rekordbox or Serato import came in with blank genres, SetLab now estimates and fills them (plus any missing BPM or key) with AI, right from the Library tab. Genre powers genre-based sets and crates, so a library that imported without it can finally build them. *(Rekordbox collections often arrive with no genre at all — this closes that gap.)*
 - **Step-by-step import guide after every export** — after downloading a Serato .crate, Rekordbox XML, or M3U playlist, a persistent "How to import" panel now tells you exactly where the file goes and what to do next (Serato: drop into Subcrates + restart; Rekordbox: Preferences → XML import; M3U: File → Import). Replaces the old toast that vanished in seconds. Crate exports get it too — previously there was no guidance at all.
 - **Set Builder front and centre on the dashboard** — the Set Builder is now the flagship card on your dashboard (bigger, with harmonic mixing / energy arc / do-not-repeat capabilities highlighted), and Crate Builder steps back to a clear secondary slot — so where to start for an upcoming gig is obvious at a glance.
 - **Serato exports now load with full metadata** — exported .crate files now correctly pair with your Serato library on import; every track loads with its BPM, key, artist, and genre instead of blank fields. *(Was a path-format bug that caused Serato to miss the library match entirely.)*
