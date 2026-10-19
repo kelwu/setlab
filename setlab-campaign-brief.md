@@ -2,7 +2,7 @@
 
 > **Purpose:** Single source of truth for writing accurate SetLab email campaigns (Loops).
 > Keep this current — update the "What's New" section whenever a feature ships.
-> Last updated: 2026-10-16.
+> Last updated: 2026-10-19.
 
 ---
 
@@ -98,7 +98,7 @@ Most recent first. Convert these into "we just shipped…" emails.
 - **Rekordbox exports now include Genre and Year** — genre and release year appear on every track when you import a SetLab set into Rekordbox, so your collection stays sortable and filterable the moment it lands in your crates.
 - **Smarter library re-sync** — re-importing your library now updates only what changed instead of rebuilding from scratch: it keeps your crates and enrichment intact, restores tracks that briefly went missing (e.g. an unplugged drive), and tells you exactly how many tracks were added, removed, or unchanged.
 - **Corporate-aware sets** — for corporate, wedding, radio, and lounge crowds the builder now steers clear of tracks whose *subject matter* isn't right for the room — not just the explicit versions, but the clean edits of songs that are still about the wrong things. It's a smart steer, not a guarantee, so the set comes with a reminder to give it a final read for your client.
-- **3-hour sets** — the set length now goes up to 180 minutes, for the long corporate, wedding, and residency slots.
+- **4-hour sets** — the set length now goes up to 240 minutes, for the long corporate, wedding, and residency slots.
 - **Clean-only sets** — one toggle keeps a set corporate-, wedding-, and radio-safe by leaving explicit versions out of the pool.
 - **See why the AI picked every track** — tap "Why ▾" on any track in your set to read the AI's reasoning for including it and its planned transition note. The notes were always there; now they're one tap away on every device, including mobile.
 - **Shared set links now show the full picture** — purchase links and AI review notes now appear on shared/public set pages, not just in your own view. Everyone you share with sees the same detail you do.
