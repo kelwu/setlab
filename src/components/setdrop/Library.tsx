@@ -10,6 +10,7 @@ import { LibraryTrack, SetlistTrack } from '@/lib/agents/types';
 import { parseRekordboxLibrary, type RekordboxPlaylist } from '@/lib/setdrop/rekordbox-parser';
 import { buildCrate, downloadCrate } from '@/lib/setdrop/serato-crate';
 import { buildRekordboxXml, buildM3u, downloadRekordboxXml, downloadM3u } from '@/lib/setdrop/rekordbox-export';
+import { gateExport } from '@/lib/setdrop/export-gate';
 import { SDButton, SDInput, ConfidenceBadge, EnergyDot, Tabs } from './shared';
 
 // ─── Crate types ──────────────────────────────────────────────────────────────
@@ -585,6 +586,7 @@ export function Library() {
   const [crateTargetCount, setCrateTargetCount] = useState(20);
   const [crateGenerating, setCrateGenerating] = useState(false);
   const [crateError, setCrateError] = useState<string | null>(null);
+  const [crateExportError, setCrateExportError] = useState<string | null>(null);
   const [activeCrate, setActiveCrate] = useState<ActiveCrate | null>(null);
 
   useEffect(() => {
@@ -902,13 +904,18 @@ export function Library() {
     if (full) setActiveCrate({ ...full, moodNotes: '' });
   };
 
-  const exportCrateSerato = (crate: ActiveCrate) => {
+  // Export handlers — gate against the monthly export limit before downloading,
+  // same as CrateBuilder (these previously skipped the gate entirely).
+  const exportCrateSerato = async (crate: ActiveCrate) => {
     const paths = crate.tracks.map(t => t.filePath).filter((p): p is string => Boolean(p));
     if (!paths.length) { alert('No file paths — library enrichment may be needed.'); return; }
+    const gate = await gateExport('crate', crate.id, 'serato-crate');
+    if (!gate.ok) { setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    setCrateExportError(null);
     downloadCrate(buildCrate(paths), crate.name);
   };
 
-  const exportCrateRekordbox = (crate: ActiveCrate) => {
+  const exportCrateRekordbox = async (crate: ActiveCrate) => {
     const pseudoSetlist: SetlistTrack[] = crate.tracks.map((t, i) => ({
       position: i + 1, artist: t.artist, title: t.title, bpm: t.bpm ?? 0, key: t.key ?? '',
       energyLevel: 5, whyThisTrack: '', transitionNotes: '', harmonicMixingNotes: '', isWishlistTrack: false,
@@ -918,10 +925,13 @@ export function Library() {
       genre: t.genre ?? undefined, filePath: t.filePath ?? undefined, isWishlist: false,
     }));
     const { xml } = buildRekordboxXml(crate.name, pseudoSetlist, pseudoLibrary);
+    const gate = await gateExport('crate', crate.id, 'rekordbox-xml');
+    if (!gate.ok) { setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    setCrateExportError(null);
     downloadRekordboxXml(xml, crate.name);
   };
 
-  const exportCrateM3u = (crate: ActiveCrate) => {
+  const exportCrateM3u = async (crate: ActiveCrate) => {
     const pseudoSetlist: SetlistTrack[] = crate.tracks.map((t, i) => ({
       position: i + 1, artist: t.artist, title: t.title, bpm: t.bpm ?? 0, key: t.key ?? '',
       energyLevel: 5, whyThisTrack: '', transitionNotes: '', harmonicMixingNotes: '', isWishlistTrack: false,
@@ -931,6 +941,9 @@ export function Library() {
       genre: t.genre ?? undefined, filePath: t.filePath ?? undefined, isWishlist: false,
     }));
     const { m3u } = buildM3u(crate.name, pseudoSetlist, pseudoLibrary);
+    const gate = await gateExport('crate', crate.id, 'm3u');
+    if (!gate.ok) { setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    setCrateExportError(null);
     downloadM3u(m3u, crate.name);
   };
 
@@ -1376,11 +1389,29 @@ export function Library() {
                     <SDButton ghost onClick={() => exportCrateM3u(activeCrate)} style={{ fontSize:11, padding:'5px 12px' }}>
                       M3U
                     </SDButton>
-                    <SDButton ghost onClick={() => setActiveCrate(null)} style={{ fontSize:11, padding:'5px 12px', color:SD.textMuted }}>
+                    <SDButton ghost onClick={() => { setActiveCrate(null); setCrateExportError(null); }} style={{ fontSize:11, padding:'5px 12px', color:SD.textMuted }}>
                       Close
                     </SDButton>
                   </div>
                 </div>
+                {crateExportError && (
+                  <div style={{
+                    marginBottom:12, padding:'10px 14px',
+                    background:SD.accentDim, border:`1px solid ${SD.accent}44`, borderRadius:SD.r2,
+                    fontFamily:SD.mono, fontSize:SD.t11, color:SD.accent,
+                    display:'flex', alignItems:'center', justifyContent:'space-between', gap:12,
+                  }}>
+                    <span>{crateExportError}</span>
+                    <a href="/account" style={{
+                      fontFamily:SD.mono, fontSize:SD.t11, letterSpacing:1.5,
+                      textTransform:'uppercase', color:SD.accent,
+                      textDecoration:'none', whiteSpace:'nowrap',
+                      border:`1px solid ${SD.accent}66`, borderRadius:SD.r1, padding:'3px 8px',
+                    }}>
+                      Go Pro →
+                    </a>
+                  </div>
+                )}
                 <div style={{ overflowX:'auto' }}>
                   <div style={{ minWidth:420 }}>
                     <div style={{ display:'grid', gridTemplateColumns:'32px 1fr 64px 52px', gap:12,
