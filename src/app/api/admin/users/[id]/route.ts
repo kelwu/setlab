@@ -16,8 +16,9 @@ export async function PATCH(
 
   const updates: Record<string, unknown> = {};
   switch (action) {
-    case 'grant_pro':  updates.subscription_tier = 'pro'; break;
-    case 'revoke_pro': updates.subscription_tier = 'free'; break;
+    // comp_pro shields a manually granted tier from Stripe webhook updates.
+    case 'grant_pro':  updates.subscription_tier = 'pro'; updates.comp_pro = true; break;
+    case 'revoke_pro': updates.subscription_tier = 'free'; updates.comp_pro = false; break;
     case 'set_beta':   updates.is_beta = true; break;
     case 'unset_beta': updates.is_beta = false; break;
     case 'ban':        updates.is_banned = true; break;
