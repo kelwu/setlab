@@ -47,17 +47,18 @@ export async function POST(req: NextRequest) {
       // Find user by Stripe customer ID
       const { data: userRow } = await supabase
         .from('users')
-        .select('id, email')
+        .select('id, email, comp_pro')
         .eq('stripe_customer_id', customerId)
         .single();
       if (userRow) {
+        // Comped (admin-granted) accounts keep Pro when a Stripe sub ends.
         await supabase.from('users').update({
-          subscription_tier: 'free',
+          ...(userRow.comp_pro ? {} : { subscription_tier: 'free' }),
           stripe_subscription_id: null,
         }).eq('id', userRow.id);
         // Fire-and-forget: reflect the churn in Loops so the contact drops back
         // into free-conversion segments.
-        if (userRow.email) updateLoopsContact(userRow.email, { subscriptionTier: 'free' });
+        if (userRow.email && !userRow.comp_pro) updateLoopsContact(userRow.email, { subscriptionTier: 'free' });
       }
       break;
     }
@@ -67,10 +68,11 @@ export async function POST(req: NextRequest) {
       const isActive = subscription.status === 'active' || subscription.status === 'trialing';
       const { data: userRow } = await supabase
         .from('users')
-        .select('id, email')
+        .select('id, email, comp_pro')
         .eq('stripe_customer_id', customerId)
         .single();
-      if (userRow) {
+      // Comped accounts' tier is managed by admin, not Stripe.
+      if (userRow && !userRow.comp_pro) {
         await supabase.from('users').update({
           subscription_tier: isActive ? 'pro' : 'free',
         }).eq('id', userRow.id);
