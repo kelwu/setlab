@@ -365,7 +365,7 @@ export async function POST(req: NextRequest) {
       // thin for the request) — record it as 'rejected' so the health-check
       // watchdog doesn't count it as a failure. Everything else is a real error.
       const status = err instanceof SetlistInputError ? 'rejected' : 'error';
-      if (status === 'error') console.error('[generate-setlist] Error:', message);
+      if (status === 'error') console.error('[generate-setlist] Error:', err instanceof Error ? err.stack : message);
       await recordGenerationEvent(user?.id ?? null, 'generate-setlist', status, Date.now() - genStart, message);
       await writer.write(encode({ type: 'error', message }));
     } finally {
