@@ -448,7 +448,7 @@ Gig context:
   // silently retrying and doubling its cost.
   const res = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 2048,
+    max_tokens: 4096,
     system: GIG_BLUEPRINT_SYSTEM,
     messages: [{ role: 'user', content: userMessage }],
     tools: [GIG_BLUEPRINT_TOOL],
@@ -461,7 +461,29 @@ Gig context:
     (b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use' && b.name === 'generate_gig_blueprint',
   );
   if (!block) throw new Error('Expected tool_use block from generate_gig_blueprint');
-  return block.input as { gigIntel: GigIntelReport; blueprint: SetBlueprint };
+
+  // The model occasionally returns a nested object as a JSON string, and a
+  // max_tokens stop leaves the tool input partial. Either way blueprint.phases
+  // was undefined and filterTracksForGig crashed with "reading 'map'".
+  const raw = block.input as Record<string, unknown>;
+  const parse = (v: unknown) => {
+    if (typeof v !== 'string') return v;
+    try { return JSON.parse(v); } catch { return undefined; }
+  };
+  const gigIntel = parse(raw.gigIntel) as GigIntelReport | undefined;
+  const blueprint = parse(raw.blueprint) as SetBlueprint | undefined;
+  const phasesOk = Array.isArray(blueprint?.phases) && blueprint!.phases.length > 0
+    && blueprint!.phases.every(p => typeof p?.bpmRange?.min === 'number' && typeof p?.bpmRange?.max === 'number');
+  if (res.stop_reason === 'max_tokens' || !gigIntel || !phasesOk) {
+    console.error('[blueprint] invalid output', {
+      stop_reason: res.stop_reason,
+      output_tokens: res.usage?.output_tokens,
+      blueprintType: typeof raw.blueprint,
+      hasPhases: Array.isArray(blueprint?.phases),
+    });
+    throw new Error('Set blueprint came back incomplete — please try again.');
+  }
+  return { gigIntel, blueprint: blueprint! };
 }
 
 // Call 2: Select and write polished notes from filtered tracks
