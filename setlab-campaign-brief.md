@@ -2,7 +2,7 @@
 
 > **Purpose:** Single source of truth for writing accurate SetLab email campaigns (Loops).
 > Keep this current — update the "What's New" section whenever a feature ships.
-> Last updated: 2026-10-16.
+> Last updated: 2026-11-07.
 
 ---
 
@@ -90,6 +90,7 @@ Lead with the **benefit**, support with the **feature**.
 
 Most recent first. Convert these into "we just shipped…" emails.
 
+- **Sets stay in your genres, with no repeat songs** — a set now draws from all your tagged tracks in the genres you picked (including the secondary genre and the wider family), so a Disco House / Nu Disco set fills with real house and nu disco instead of untagged or hip-hop filler. Clean, dirty, extended, and intro versions of one song now count as one song, so the same record can't appear twice; SetLab plays the clean version for wedding, corporate, and radio crowds and the extended version otherwise. *(Also fixes the "Nu Disco" genre not being recognized, and makes set planning more reliable.)*
 - **Rekordbox & M3U exports now import a populated playlist** — fixed a bug where an exported Rekordbox playlist could import completely empty; your set now lands as a full playlist with every owned track linked. Streaming-only tracks (SoundCloud/TIDAL/etc.) that can't live in a DJ app are now flagged and skipped with a count instead of silently producing an empty file, and M3U exports use standard line endings for clean imports across DJ apps. *(Verified by a real Rekordbox user importing a rebuilt set.)*
 - **Auto-tag missing genres (and BPM/key) in one click** — if your Rekordbox or Serato import came in with blank genres, SetLab now estimates and fills them (plus any missing BPM or key) with AI, right from the Library tab. Genre powers genre-based sets and crates, so a library that imported without it can finally build them. *(Rekordbox collections often arrive with no genre at all — this closes that gap.)*
 - **Step-by-step import guide after every export** — after downloading a Serato .crate, Rekordbox XML, or M3U playlist, a persistent "How to import" panel now tells you exactly where the file goes and what to do next (Serato: drop into Subcrates + restart; Rekordbox: Preferences → XML import; M3U: File → Import). Replaces the old toast that vanished in seconds. Crate exports get it too — previously there was no guidance at all.

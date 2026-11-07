@@ -9,6 +9,7 @@ import { PLANS } from '@/lib/stripe';
 import { computeAffinity, type DiffEntry, type TasteAffinity } from '@/lib/setdrop/taste';
 import { targetTrackCount } from '@/lib/setdrop/readiness';
 import { getSimilarArtists } from '@/lib/setdrop/lastfm';
+import { genreFetchPatterns } from '@/lib/setdrop/genre';
 
 export const maxDuration = 300;
 
@@ -209,18 +210,37 @@ export async function POST(req: NextRequest) {
               const seedResults = await Promise.all(seedQueries);
 
               if (genre) {
-                // Genre present: keep the tiered fetch (exact-ish / null-genre / other),
-                // each narrowed by era + artist in SQL.
-                const [{ data: genreRows }, { data: nullGenreRows }, { data: otherRows }] =
-                  await Promise.all([
-                    applyAxes(supabase.from('serato_tracks').select(SELECT)
-                      .eq('library_id', lib.id).eq('in_library', true).ilike('genre', `%${genre}%`)).limit(400),
-                    applyAxes(supabase.from('serato_tracks').select(SELECT)
-                      .eq('library_id', lib.id).eq('in_library', true).is('genre', null)).limit(100),
-                    applyAxes(supabase.from('serato_tracks').select(SELECT)
-                      .eq('library_id', lib.id).eq('in_library', true).not('genre', 'ilike', `%${genre}%`)).limit(100),
-                  ]);
-                allRows = [...(genreRows ?? []), ...(nullGenreRows ?? []), ...(otherRows ?? [])];
+                // Genre present: tiered fetch, each narrowed by era + artist in SQL.
+                //  1. exact-ish primary + secondary genre
+                //  2. the gig's whole super-family (+ disco bridges) — what the
+                //     pipeline's genre gate can actually admit. Previously this tier
+                //     was 100 ARBITRARY other-genre rows and the secondary genre was
+                //     never fetched, so a Disco House + Nu Disco gig saw ~2 on-genre
+                //     tracks and filled the set with untagged/off-genre leftovers.
+                //  3. a small untagged sample (the gate's low-priority fallback)
+                // An unclassified gig genre keeps the old arbitrary-other sample.
+                const base = () => supabase.from('serato_tracks').select(SELECT)
+                  .eq('library_id', lib.id).eq('in_library', true);
+                const secondary = input.secondaryGenre;
+                const patterns = [
+                  ...new Set([...(genreFetchPatterns(genre) ?? []), ...(secondary ? genreFetchPatterns(secondary) ?? [] : [])]),
+                ];
+                const results = await Promise.all([
+                  applyAxes(base().ilike('genre', `%${sanitizeLike(genre)}%`)).limit(400),
+                  secondary ? applyAxes(base().ilike('genre', `%${sanitizeLike(secondary)}%`)).limit(400) : null,
+                  patterns.length
+                    ? applyAxes(base().or(patterns.map(p => `genre.ilike.%${p}%`).join(','))).limit(1000)
+                    : applyAxes(base().not('genre', 'ilike', `%${sanitizeLike(genre)}%`)).limit(100),
+                  applyAxes(base().or('genre.is.null,genre.eq.')).limit(100),
+                ]);
+                const seenIds = new Set<string>();
+                for (const r of results) {
+                  for (const row of r?.data ?? []) {
+                    if (seenIds.has(row.id)) continue;
+                    seenIds.add(row.id);
+                    allRows.push(row);
+                  }
+                }
               } else {
                 // No genre axis — the pool is defined by era and/or artist alone.
                 const { data } = await applyAxes(supabase.from('serato_tracks').select(SELECT)

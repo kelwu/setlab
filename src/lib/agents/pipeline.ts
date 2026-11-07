@@ -10,6 +10,7 @@ import { SetlistInputError } from './errors';
 import { camelotRelation, toCamelot } from '@/lib/setdrop/key-utils';
 import { genreRelevance, superFamily, passesGenreGate } from '@/lib/setdrop/genre';
 import { passesCleanFilter } from '@/lib/setdrop/clean';
+import { songKey, artistKey, versionWords } from '@/lib/setdrop/song-key';
 import { isThemeSensitiveCrowd } from '@/lib/setdrop/constants';
 import { MIN_SUPERFAMILY_TRACKS, targetTrackCount } from '@/lib/setdrop/readiness';
 import { TasteAffinity, affinityTrackKey, affinityArtistKey } from '@/lib/setdrop/taste';
@@ -70,12 +71,19 @@ function client() {
 const GIG_BLUEPRINT_TOOL: Anthropic.Tool = {
   name: 'generate_gig_blueprint',
   description: 'Output gig intelligence and set blueprint.',
+  // Strict tool use: the API guarantees the input validates against this schema.
+  // Without it the model intermittently returned `blueprint` as a malformed JSON
+  // STRING (stop_reason tool_use, not a truncation) — the Nov 6 "0/6 succeeded"
+  // alert. Strict requires additionalProperties:false on every object.
+  strict: true,
   input_schema: {
     type: 'object',
+    additionalProperties: false,
     required: ['gigIntel', 'blueprint'],
     properties: {
       gigIntel: {
         type: 'object',
+        additionalProperties: false,
         required: ['crowdProfile', 'trendingGenres', 'recommendedBpmRange', 'avoidArtists', 'contextNotes'],
         properties: {
           venueName: { type: 'string' },
@@ -83,6 +91,7 @@ const GIG_BLUEPRINT_TOOL: Anthropic.Tool = {
           trendingGenres: { type: 'array', items: { type: 'string' } },
           recommendedBpmRange: {
             type: 'object',
+            additionalProperties: false,
             required: ['min', 'max'],
             properties: { min: { type: 'number' }, max: { type: 'number' } },
           },
@@ -92,6 +101,7 @@ const GIG_BLUEPRINT_TOOL: Anthropic.Tool = {
       },
       blueprint: {
         type: 'object',
+        additionalProperties: false,
         required: ['totalTracks', 'phases', 'transitionStrategy', 'openerHeadlinerNotes'],
         properties: {
           totalTracks: { type: 'number' },
@@ -99,6 +109,7 @@ const GIG_BLUEPRINT_TOOL: Anthropic.Tool = {
             type: 'array',
             items: {
               type: 'object',
+              additionalProperties: false,
               required: ['name', 'trackCount', 'energyTarget', 'bpmRange', 'genreGuidance'],
               properties: {
                 name: { type: 'string' },
@@ -106,6 +117,7 @@ const GIG_BLUEPRINT_TOOL: Anthropic.Tool = {
                 energyTarget: { type: 'number' },
                 bpmRange: {
                   type: 'object',
+                  additionalProperties: false,
                   required: ['min', 'max'],
                   properties: { min: { type: 'number' }, max: { type: 'number' } },
                 },
@@ -366,6 +378,31 @@ function filterTracksForGig(
     return Math.max(primary, secondary, 0); // never negative once it passed the gate
   };
 
+  // Untagged fallback guard. passesGenreGate admits tracks with NO genre signal so
+  // a thinly-tagged library still has a pool — but with nothing to vouch for their
+  // genre, tempo is the only evidence they belong. So when a genre axis is set, an
+  // untagged track must carry a real BPM inside the blueprint's window. This keeps
+  // 97-BPM rap and BPM-0 voice memos out of a disco-house set. (Tagged tracks with
+  // no BPM are kept: some libraries are 90%+ un-analysed.)
+  const untaggedOk = (t: LibraryTrack): boolean => {
+    if (!input.primaryGenre) return true;
+    if (genreRelevance(input.primaryGenre, t.genre ?? '', t.lastfmTags ?? []).tier !== 'unknown') return true;
+    return t.bpm > 0 && t.bpm >= bpmMin && t.bpm <= bpmMax;
+  };
+
+  // Version preference when collapsing one song's DJ-pool versions (clean / dirty /
+  // extended / intro…) down to one: clean for theme-sensitive or clean-only gigs,
+  // and extended edits (longer intros/outros to mix) otherwise as a tiebreak.
+  const preferClean = !!input.cleanOnly || isThemeSensitiveCrowd(input.crowdContext);
+  const versionPref = (t: LibraryTrack): number => {
+    const v = versionWords(t.title);
+    let p = 0;
+    if (preferClean && v.has('clean')) p += 2;
+    if (preferClean && (v.has('dirty') || v.has('explicit'))) p -= 2;
+    if (v.has('extended')) p += 1;
+    return p;
+  };
+
   // Cap candidates per artist so a library skewed toward one artist can't produce
   // an artist-skewed pool (which is what makes the selector over-repeat). Keeps each
   // artist's highest-scoring tracks; the set-level "max 2 per artist" is enforced by
@@ -373,9 +410,13 @@ function filterTracksForGig(
   const POOL_PER_ARTIST_CAP = 3;
   const perArtist: Record<string, number> = {};
 
-  const scored = tracks
+  // Always include seed tracks and wishlist tracks (uncapped — user-requested)
+  const pinned = tracks.filter(t => t.isWishlist || isSeed(t));
+  const pinnedKeys = new Set(pinned.map(t => songKey(t.artist, t.title)));
+
+  const ranked = tracks
     .filter(t => !t.isWishlist && !isSeed(t))
-    .filter(t => matchesEra(t) && artist.pass(t))
+    .filter(t => matchesEra(t) && artist.pass(t) && untaggedOk(t))
     .map(t => ({ t, genre: genreScoreFor(t) }))
     .filter((x): x is { t: LibraryTrack; genre: number } => x.genre !== null)
     .map(({ t, genre }) => {
@@ -389,22 +430,44 @@ function filterTracksForGig(
         score += affinity.trackScores[affinityTrackKey(t.artist, t.title)] ?? 0;
         score += 0.5 * (affinity.artistScores[affinityArtistKey(t.artist)] ?? 0);
       }
-      return { t, score };
+      // Untagged tracks are a true fallback: they rank below EVERY tagged in-genre
+      // track, so they only reach the pool when tagged ones run out. Without this,
+      // affinity (up to +3.75) lifted often-played untagged edits above tagged
+      // house — which is how 97-BPM rap landed in a disco-house set.
+      if (input.primaryGenre && genreRelevance(input.primaryGenre, t.genre ?? '', t.lastfmTags ?? []).tier === 'unknown') {
+        score -= 100;
+      }
+      return { t, score, key: songKey(t.artist, t.title) };
     })
+    .filter(x => !pinnedKeys.has(x.key)); // a pinned track already covers this song
+
+  // One version per song: the selector only ever sees a single candidate for each
+  // song, so a set can't open on the clean edit and close on the dirty one. The
+  // song's best score carries the group; version preference picks which file.
+  // (Sorted first, so the first version seen holds the song's best score; a later
+  // version only replaces the file when it's a preferred version.)
+  const best = new Map<string, { t: LibraryTrack; score: number; pref: number }>();
+  for (const x of ranked.sort((a, b) => b.score - a.score)) {
+    const pref = versionPref(x.t);
+    const cur = best.get(x.key);
+    if (!cur) best.set(x.key, { t: x.t, score: x.score, pref });
+    else if (pref > cur.pref) best.set(x.key, { t: x.t, score: cur.score, pref });
+  }
+
+  const scored = [...best.values()]
     .sort((a, b) => b.score - a.score)
     .filter(({ t }) => {
       // Anchor artists are the whole point of an artist-anchored set — never cap them.
       // (Similar-artist top-ups still get the normal cap, to keep them varied.)
       if (artist.active && artist.isAnchor(t)) return true;
-      const key = t.artist.toLowerCase().trim();
+      // Order-insensitive, so "A, B & C" and "C, A, B" share one cap.
+      const key = artistKey(t.artist);
       perArtist[key] = (perArtist[key] ?? 0) + 1;
       return perArtist[key] <= POOL_PER_ARTIST_CAP;
     })
     .slice(0, MAX_SELECTOR_TRACKS)
     .map(({ t }) => t);
 
-  // Always include seed tracks and wishlist tracks (uncapped — user-requested)
-  const pinned = tracks.filter(t => t.isWishlist || isSeed(t));
   return [...pinned, ...scored];
 }
 
@@ -593,10 +656,20 @@ ${JSON.stringify(tracks.map(t => ({
   // Join the selection back to the candidate pool by id (dropping any hallucinated
   // ids), in play order. Metadata + purchase URLs come from the real library track.
   const byId = new Map(tracks.map(t => [t.id, t]));
+  // Backstop: the pool already holds one version per song, but seeds/wishlist and
+  // any repeated id could still double a song — keep its first appearance only.
+  const seenSongs = new Set<string>();
+  let droppedRepeats = 0;
   const picked = selection.tracks
     .filter(s => byId.has(s.id))
     .sort((a, b) => a.position - b.position)
-    .map(sel => ({ sel, lib: byId.get(sel.id)! }));
+    .map(sel => ({ sel, lib: byId.get(sel.id)! }))
+    .filter(({ lib }) => {
+      const key = songKey(lib.artist, lib.title);
+      if (seenSongs.has(key)) { droppedRepeats++; return false; }
+      seenSongs.add(key);
+      return true;
+    });
   if (!picked.length) {
     throw new Error('Selector returned no matching tracks — please try again.');
   }
@@ -650,6 +723,10 @@ ${JSON.stringify(tracks.map(t => ({
   }
   const worst = Object.values(artistCounts).sort((a, b) => b.count - a.count)[0];
   let reviewNotes = selection.reviewNotes;
+  if (droppedRepeats > 0) {
+    console.warn('[selector] dropped repeated songs', { droppedRepeats });
+    reviewNotes += `\n\nRemoved ${droppedRepeats} repeat${droppedRepeats === 1 ? '' : 's'} of a song already in the set (another version of the same track).`;
+  }
   if (worst && worst.count >= 3) {
     const fix = input.sourcePlaylist
       ? `Add more variety to the playlist to diversify future sets.`
@@ -738,6 +815,9 @@ export async function runSetlistPipeline(
         const inGenre = passesGenreGate(input.primaryGenre!, t.genre ?? '', tags)
           || (!!input.secondaryGenre && passesGenreGate(input.secondaryGenre, t.genre ?? '', tags));
         if (!inGenre) continue; // out of the gig's genre family (and its bridges) → excluded
+        // No genre AND no BPM: nothing places it in the gig — filterTracksForGig
+        // drops these, so don't let them prop up the floor either.
+        if (t.bpm <= 0 && genreRelevance(input.primaryGenre!, t.genre ?? '', tags).tier === 'unknown') continue;
       }
       poolCount++;
       if (t.year != null) poolWithYear++;
