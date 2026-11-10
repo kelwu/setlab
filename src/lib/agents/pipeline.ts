@@ -8,7 +8,7 @@ import {
 import { GIG_BLUEPRINT_SYSTEM, SELECTOR_SYSTEM, NOTES_SYSTEM } from './prompts';
 import { SetlistInputError } from './errors';
 import { camelotRelation, toCamelot } from '@/lib/setdrop/key-utils';
-import { genreRelevance, superFamily, passesGenreGate } from '@/lib/setdrop/genre';
+import { genreRelevance, superFamily, gigGenreMatch, gigGenreLabel } from '@/lib/setdrop/genre';
 import { passesCleanFilter } from '@/lib/setdrop/clean';
 import { songKey, artistKey, versionWords } from '@/lib/setdrop/song-key';
 import { isThemeSensitiveCrowd } from '@/lib/setdrop/constants';
@@ -367,15 +367,9 @@ function filterTracksForGig(
   // track scores 0 and order is decided by BPM/tags/affinity below.
   const genreScoreFor = (t: LibraryTrack): number | null => {
     if (!input.primaryGenre) return 0;
-    const tags = t.lastfmTags ?? [];
-    const primaryOk = passesGenreGate(input.primaryGenre, t.genre ?? '', tags);
-    const secondaryOk = input.secondaryGenre
-      ? passesGenreGate(input.secondaryGenre, t.genre ?? '', tags) : false;
-    if (!primaryOk && !secondaryOk) return null; // out of family (and its bridges) → excluded
-    const primary = genreRelevance(input.primaryGenre, t.genre ?? '', tags).score;
-    const secondary = input.secondaryGenre
-      ? genreRelevance(input.secondaryGenre, t.genre ?? '', tags).score : -1;
-    return Math.max(primary, secondary, 0); // never negative once it passed the gate
+    const m = gigGenreMatch(input.primaryGenre, input.secondaryGenre, t.genre ?? '', t.lastfmTags ?? []);
+    if (!m.inGenre) return null; // out of family (and its bridges) → excluded
+    return Math.max(m.score, 0); // never negative once it passed the gate
   };
 
   // Untagged fallback guard. passesGenreGate admits tracks with NO genre signal so
@@ -805,19 +799,19 @@ export async function runSetlistPipeline(
     for (const t of pool) {
       if (t.isWishlist) continue;
       if (genreActive) {
-        const rel = genreRelevance(input.primaryGenre!, t.genre ?? '', t.lastfmTags ?? []);
-        if (rel.tier === 'exact') exactGenreCount++;
+        // Exact = an exact match for the primary OR the secondary genre.
+        const m = gigGenreMatch(input.primaryGenre!, input.secondaryGenre, t.genre ?? '', t.lastfmTags ?? []);
+        if (m.tier === 'exact') exactGenreCount++;
         if (gigSuper !== 'other' && superFamily(t.genre ?? '', t.lastfmTags ?? []) === gigSuper) superFamilyCount++;
       }
       if (!matchesEra(t) || !anchor.pass(t)) continue;
       if (genreActive) {
         const tags = t.lastfmTags ?? [];
-        const inGenre = passesGenreGate(input.primaryGenre!, t.genre ?? '', tags)
-          || (!!input.secondaryGenre && passesGenreGate(input.secondaryGenre, t.genre ?? '', tags));
-        if (!inGenre) continue; // out of the gig's genre family (and its bridges) → excluded
+        const m = gigGenreMatch(input.primaryGenre!, input.secondaryGenre, t.genre ?? '', tags);
+        if (!m.inGenre) continue; // out of the gig's genre family (and its bridges) → excluded
         // No genre AND no BPM: nothing places it in the gig — filterTracksForGig
         // drops these, so don't let them prop up the floor either.
-        if (t.bpm <= 0 && genreRelevance(input.primaryGenre!, t.genre ?? '', tags).tier === 'unknown') continue;
+        if (t.bpm <= 0 && m.tier === 'unknown') continue;
       }
       poolCount++;
       if (t.year != null) poolWithYear++;
@@ -865,7 +859,8 @@ export async function runSetlistPipeline(
     // is active; no genre gate in playlist mode.)
     let reviewNotes = reviewed.reviewNotes;
     if (!playlistMode && genreActive && exactGenreCount < reviewed.tracks.length) {
-      reviewNotes += `\n\nNote: your library has only ${exactGenreCount} true ${input.primaryGenre} track${exactGenreCount === 1 ? '' : 's'}, so this set is built largely from adjacent ${gigSuper} genres. Import more ${input.primaryGenre} for a truer ${input.primaryGenre} set.`;
+      const label = gigGenreLabel(input.primaryGenre!, input.secondaryGenre);
+      reviewNotes += `\n\nNote: your library has only ${exactGenreCount} ${label} track${exactGenreCount === 1 ? '' : 's'}, so this set is built largely from adjacent ${gigSuper} genres. Import more ${label} for a truer set.`;
     }
     // Parallel honesty for the era axis: if much of the pool lacked release-year data,
     // the era filter only saw the tracks we could date.

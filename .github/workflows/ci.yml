@@ -23,6 +23,10 @@ jobs:
       #     as repo secrets + a build step later.
       - name: Typecheck
         run: npx tsc --noEmit
+      # Sweeps every builder genre through the genre model (classification,
+      # spelling variants, super-family wall, secondary genre, version dedupe).
+      - name: Genre checks
+        run: npm run check:genres
       - name: Lint (non-blocking until backlog cleared)
         run: npm run lint
         continue-on-error: true

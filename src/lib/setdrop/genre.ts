@@ -183,3 +183,30 @@ export function passesGenreGate(
   // tier 'adjacent' or 'off': keep only within the same known super-family.
   return superFamily(trackGenre, tags) === gSuper;
 }
+
+const TIER_RANK: Record<GenreTier, number> = { exact: 4, family: 3, adjacent: 2, unknown: 1, off: 0 };
+
+// A gig is defined by a primary AND an optional secondary genre. Every consumer
+// (pool gate, ranking, readiness counts, the "thin genre" honesty note) must
+// judge a track against BOTH — logic that looked at the primary alone told a
+// Disco House / Nu-Disco set it had "only 2 true tracks" with ~900 Nu Disco in
+// the library. Use this instead of calling genreRelevance/passesGenreGate on
+// input.primaryGenre directly.
+export function gigGenreMatch(
+  primaryGenre: string, secondaryGenre: string | null | undefined,
+  trackGenre: string, tags: string[] = [],
+  opts: { allowUnknown?: boolean } = {},
+): { inGenre: boolean; tier: GenreTier; score: number } {
+  const p = genreRelevance(primaryGenre, trackGenre, tags);
+  const s = secondaryGenre ? genreRelevance(secondaryGenre, trackGenre, tags) : null;
+  const best = s && TIER_RANK[s.tier] > TIER_RANK[p.tier] ? s : p;
+  const inGenre = passesGenreGate(primaryGenre, trackGenre, tags, opts)
+    || (!!secondaryGenre && passesGenreGate(secondaryGenre, trackGenre, tags, opts));
+  return { inGenre, tier: best.tier, score: best.score };
+}
+
+/** "Disco House or Nu-Disco" — how notes name the gig's genre(s). */
+export function gigGenreLabel(primaryGenre: string, secondaryGenre?: string | null): string {
+  const s = secondaryGenre?.trim();
+  return s && s.toLowerCase() !== primaryGenre.trim().toLowerCase() ? `${primaryGenre} or ${s}` : primaryGenre;
+}

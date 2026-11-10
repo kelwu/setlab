@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { genreRelevance, superFamily, passesGenreGate } from '@/lib/setdrop/genre';
+import { superFamily, gigGenreMatch } from '@/lib/setdrop/genre';
 import {
   classifyReadiness, targetTrackCount, unknownReadiness,
   type ReadinessCounts, type ReadinessResult,
@@ -74,13 +74,13 @@ export async function POST(req: NextRequest) {
       const genre = t.genre ?? '';
       const tags = (t.lastfm_tags as string[] | null) ?? [];
 
-      // Genre-tier counts (primary genre only) — mirror the pipeline honesty note.
-      // Only meaningful when a genre axis is active.
-      if (genreActive) {
-        const primary = genreRelevance(primaryGenre!, genre, tags);
-        if (primary.tier === 'exact') counts.exact++;
-        else if (primary.tier === 'family') counts.family++;
-        else if (primary.tier === 'adjacent') counts.adjacent++;
+      // Genre-tier counts (best of primary/secondary) — mirror the pipeline honesty
+      // note. Only meaningful when a genre axis is active.
+      const match = genreActive ? gigGenreMatch(primaryGenre!, secondaryGenre, genre, tags) : null;
+      if (match) {
+        if (match.tier === 'exact') counts.exact++;
+        else if (match.tier === 'family') counts.family++;
+        else if (match.tier === 'adjacent') counts.adjacent++;
         if (gigSuper !== 'other' && superFamily(genre, tags) === gigSuper) counts.superFamily++;
       }
 
@@ -89,11 +89,7 @@ export async function POST(req: NextRequest) {
       if (eraActive && !(t.year != null && eraSet.has(Math.floor(t.year / 10) * 10))) continue;
       if (artistActive && !anchors.some(a => (t.artist ?? '').toLowerCase().includes(a))) continue;
       counts.poolTotal++;
-      if (genreActive) {
-        const inGenre = passesGenreGate(primaryGenre!, genre, tags)
-          || (!!secondaryGenre && passesGenreGate(secondaryGenre, genre, tags));
-        if (!inGenre) continue; // out of the gig's genre family (and its bridges) → excluded
-      }
+      if (match && !match.inGenre) continue; // out of the gig's genre family (and its bridges) → excluded
       counts.usable++;
       if (t.year != null) counts.withYear++;
     }
