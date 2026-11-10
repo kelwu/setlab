@@ -7,13 +7,13 @@ import { SD, CROWD_TYPES, LINEUP_SLOTS, DURATION_OPTS, DECADES, LIBRARY_TRACKS }
 import { GeneratedSetlist } from '@/lib/agents/types';
 import { SDButton, GenreCombobox, GenrePillSelector, SDInput, AgentProgress, PageHeader } from './shared';
 import { trackEvent } from '@/lib/analytics';
-import { superFamily } from '@/lib/setdrop/genre';
+import { superFamily, gigGenreLabel } from '@/lib/setdrop/genre';
 import { CURATE_HEADROOM, classifyReadiness, targetTrackCount, type ReadinessResult } from '@/lib/setdrop/readiness';
 import * as Sentry from '@sentry/nextjs';
 
 // Axis context that defines the candidate pool. Mirrors the server-side axes on
 // SetlistInput (genre / era / artist / playlist).
-interface PoolCtx { primaryGenre: string; eras: number[]; artists: string[]; playlistName?: string }
+interface PoolCtx { primaryGenre: string; secondaryGenre?: string; eras: number[]; artists: string[]; playlistName?: string }
 
 /** Human phrase for the active pool axes, e.g. "pop from the 2000s", "tracks by
  *  Drake". Client mirror of pipeline.ts `poolDescription`. */
@@ -93,7 +93,8 @@ function readinessView(
     } else if (eraActive && counts.withYear < target * CURATE_HEADROOM) {
       text = `Only ${counts.withYear} of your matched tracks have release-year data — this era filter may come up short. Re-sync your library for year metadata, or add a genre.`;
     } else if (genreActive) {
-      text = `You have ${counts.exact} true ${primaryGenre} track${counts.exact === 1 ? '' : 's'} — this set will lean on adjacent ${adjWord} genres. More ${primaryGenre} = a truer set.`;
+      const gl = gigGenreLabel(primaryGenre, ctx.secondaryGenre);
+      text = `You have ${counts.exact} ${gl} track${counts.exact === 1 ? '' : 's'} — this set will lean on adjacent ${adjWord} genres. More ${gl} = a truer set.`;
     } else {
       text = `${counts.usable} tracks match ${label} for a ~${target}-track set — it'll work, but with little room to vary next time.`;
     }
@@ -854,7 +855,7 @@ export function SetlistBuilder() {
             {/* Set readiness — honest pre-gen signal on whether the library can
                 support this genre + duration with room to curate. Warn, never block. */}
             {(readiness || readinessLoading) && (() => {
-              const rv = readinessView(readiness, { primaryGenre, eras, artists, playlistName: sourcePlaylist || undefined }, duration || 'the set');
+              const rv = readinessView(readiness, { primaryGenre, secondaryGenre, eras, artists, playlistName: sourcePlaylist || undefined }, duration || 'the set');
               if (!rv && !readinessLoading) return null;
               return (
                 <div style={{

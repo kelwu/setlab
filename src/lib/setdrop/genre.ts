@@ -49,7 +49,12 @@ const TOKEN_SUPER: Record<string, SuperFamily> = {};
 for (const grp of GENRE_GROUPS) {
   const sf: SuperFamily = ELECTRONIC_FAMILIES.has(grp.label) ? 'electronic' : 'open-format';
   for (const g of grp.genres) {
-    const c = clean(g);
+    // Key by canonToken, not clean(): lookups go through canonToken, and ALIAS
+    // rewrites some cleaned names ("nu disco" → "nu-disco"). Keyed by clean(),
+    // Nu-Disco never matched, classified as 'other', and passesGenreGate's
+    // "unclassified gig genre → don't filter" branch let EVERY genre into a
+    // Nu-Disco set (hip-hop, R&B, reggae).
+    const c = canonToken(g);
     if (!(c in TOKEN_FAMILY)) TOKEN_FAMILY[c] = grp.label;          // keep first family
     if (!(c in TOKEN_SUPER) || sf === 'electronic') TOKEN_SUPER[c] = sf; // electronic wins for dual-listed (e.g. Afro House)
   }
@@ -119,6 +124,33 @@ function isBridgeGenre(raw: string, tags: string[] = []): boolean {
   return tags.some(t => BRIDGE_GENRES.has(canonToken(t)));
 }
 
+// SQL candidate fetch for a genre-defined gig: ILIKE substrings that cover the
+// gig's whole super-family plus the disco-lineage bridges — i.e. roughly everything
+// passesGenreGate could admit by tag. Single words only (no spaces/commas, so they
+// drop straight into a PostgREST or() filter); '_' is ILIKE's one-char wildcard so
+// 'r_b' matches "R&B" and 'nu_disco' matches both "Nu Disco" and "Nu-Disco". Over-
+// matching is fine (the gate filters precisely afterwards); under-matching is what
+// starved the pool before. Returns null for an unclassified ('other') gig genre.
+const SUPER_FETCH: Record<Exclude<SuperFamily, 'other'>, string[]> = {
+  electronic: [
+    'house', 'techno', 'trance', 'garage', 'dubstep', 'electro', 'dance', 'edm',
+    'minimal', 'progressive', 'hardstyle', 'hardcore', 'psy', 'rave', 'dnb', 'drum',
+    'bass', 'jungle', 'breaks', 'breakbeat', 'grime', 'club', 'funky', '2_step', 'ukg',
+  ],
+  'open-format': [
+    'hip', 'rap', 'r_b', 'rnb', 'soul', 'trap', 'drill', 'phonk', 'afro', 'amapiano',
+    'dancehall', 'reggae', 'latin', 'moombahton', 'pop', 'funk', 'soca', 'cumbia',
+    'salsa', 'bachata', 'merengue', 'urban', 'swing', 'top', 'gqom', 'kompa', 'dembow',
+  ],
+};
+const BRIDGE_FETCH = ['disco', 'freestyle', 'nrg', 'italo'];
+
+export function genreFetchPatterns(gigGenre: string): string[] | null {
+  const sf = superFamily(gigGenre);
+  if (sf === 'other') return null;
+  return [...SUPER_FETCH[sf], ...BRIDGE_FETCH];
+}
+
 // The single genre-membership gate: is a candidate track in-bounds for a
 // genre-defined gig? Use this EVERYWHERE a candidate pool or readiness count is
 // filtered by genre — it is the source of truth that keeps the crate builder, the
@@ -150,4 +182,31 @@ export function passesGenreGate(
   if (isBridgeGenre(trackGenre, tags)) return true; // disco lineage serves any super-family
   // tier 'adjacent' or 'off': keep only within the same known super-family.
   return superFamily(trackGenre, tags) === gSuper;
+}
+
+const TIER_RANK: Record<GenreTier, number> = { exact: 4, family: 3, adjacent: 2, unknown: 1, off: 0 };
+
+// A gig is defined by a primary AND an optional secondary genre. Every consumer
+// (pool gate, ranking, readiness counts, the "thin genre" honesty note) must
+// judge a track against BOTH — logic that looked at the primary alone told a
+// Disco House / Nu-Disco set it had "only 2 true tracks" with ~900 Nu Disco in
+// the library. Use this instead of calling genreRelevance/passesGenreGate on
+// input.primaryGenre directly.
+export function gigGenreMatch(
+  primaryGenre: string, secondaryGenre: string | null | undefined,
+  trackGenre: string, tags: string[] = [],
+  opts: { allowUnknown?: boolean } = {},
+): { inGenre: boolean; tier: GenreTier; score: number } {
+  const p = genreRelevance(primaryGenre, trackGenre, tags);
+  const s = secondaryGenre ? genreRelevance(secondaryGenre, trackGenre, tags) : null;
+  const best = s && TIER_RANK[s.tier] > TIER_RANK[p.tier] ? s : p;
+  const inGenre = passesGenreGate(primaryGenre, trackGenre, tags, opts)
+    || (!!secondaryGenre && passesGenreGate(secondaryGenre, trackGenre, tags, opts));
+  return { inGenre, tier: best.tier, score: best.score };
+}
+
+/** "Disco House or Nu-Disco" — how notes name the gig's genre(s). */
+export function gigGenreLabel(primaryGenre: string, secondaryGenre?: string | null): string {
+  const s = secondaryGenre?.trim();
+  return s && s.toLowerCase() !== primaryGenre.trim().toLowerCase() ? `${primaryGenre} or ${s}` : primaryGenre;
 }

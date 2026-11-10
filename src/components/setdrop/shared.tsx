@@ -639,6 +639,10 @@ export function GenrePillSelector({ selected, onChange, genres }: GenrePillSelec
 // ─── GenreCombobox ──────────────────────────────────────────────────────────
 import { GENRE_GROUPS } from '@/lib/setdrop/constants';
 
+function genreSearchKey(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9&]+/g, '');
+}
+
 interface GenreComboboxProps {
   value: string;
   onChange: (g: string) => void;
@@ -667,16 +671,20 @@ export function GenreCombobox({ value, onChange, placeholder = 'Search or type a
   }, []);
 
   const q = query.toLowerCase().trim();
+  // Match ignoring spaces/punctuation so "nu disco" finds "Nu-Disco" and "hiphop"
+  // finds "Hip-Hop". A plain substring match missed those, leaving only the
+  // custom "Use …" row and making the listed genre look absent.
+  const qKey = genreSearchKey(query);
 
   // Build filtered list: [{sectionLabel, genres}]
   const filtered = GENRE_GROUPS
-    .map(g => ({ label: g.label, genres: q ? g.genres.filter(n => n.toLowerCase().includes(q)) : g.genres }))
+    .map(g => ({ label: g.label, genres: qKey ? g.genres.filter(n => genreSearchKey(n).includes(qKey)) : g.genres }))
     .filter(g => g.genres.length > 0);
 
   // Flat list for keyboard nav
   const flatOptions: string[] = filtered.flatMap(g => g.genres);
-  const exactMatch = flatOptions.some(g => g.toLowerCase() === q);
-  const showCustom = q.length > 0 && !exactMatch;
+  const exactOption = qKey ? flatOptions.find(g => genreSearchKey(g) === qKey) : undefined;
+  const showCustom = q.length > 0 && !exactOption;
   const allOptions = showCustom ? [query, ...flatOptions] : flatOptions;
 
   function select(g: string) {
@@ -698,6 +706,7 @@ export function GenreCombobox({ value, onChange, placeholder = 'Search or type a
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (activeIdx >= 0) select(allOptions[activeIdx]);
+      else if (exactOption) select(exactOption); // canonical spelling, e.g. "Nu-Disco"
       else if (q) select(query);
     }
   }
