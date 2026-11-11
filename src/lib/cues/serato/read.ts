@@ -7,7 +7,7 @@
 import { ByteSource } from '../bytes';
 import { AudioFormat, TrackCues } from '../types';
 import { readId3 } from './id3';
-import { analyseFirstFrame, FrameAnalysis } from './mpeg-header';
+import { analyseFirstFrame, FrameAnalysis, mp3DurationMs } from './mpeg-header';
 import { parseSeratoMarkers2 } from './markers2';
 import { parseSeratoMarkers_ } from './markers';
 import { mergeSeratoCues } from './merge';
@@ -16,6 +16,8 @@ export interface SeratoReadResult {
   cues: TrackCues;
   /** First-frame analysis, including the stored/computed CRC for Phase 0. */
   frame: FrameAnalysis | null;
+  /** Track length from the MPEG header (0 when unknown). */
+  durationMs: number;
 }
 
 function formatFromName(filename: string): AudioFormat {
@@ -31,7 +33,7 @@ export async function readSeratoMp3Cues(src: ByteSource, filename: string): Prom
   const format = formatFromName(filename);
   const id3 = await readId3(src);
   if (!id3) {
-    return { cues: { sourceApp: 'serato', format, cues: [], trackColor: null }, frame: null };
+    return { cues: { sourceApp: 'serato', format, cues: [], trackColor: null }, frame: null, durationMs: 0 };
   }
 
   const m2raw = id3.geobs.get('Serato Markers2');
@@ -57,5 +59,6 @@ export async function readSeratoMp3Cues(src: ByteSource, filename: string): Prom
       : undefined,
   };
 
-  return { cues: trackCues, frame };
+  const durationMs = frame ? mp3DurationMs(frame, src.size - id3.audioStart - frame.frameOffset) : 0;
+  return { cues: trackCues, frame, durationMs };
 }

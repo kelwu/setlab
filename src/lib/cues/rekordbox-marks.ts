@@ -20,8 +20,14 @@ export interface MarkOptions {
   duplicateHotCuesAsMemory?: boolean;
 }
 
+// Characters XML 1.0 forbids outright (C0 controls other than tab/LF/CR, and
+// lone surrogates). Track titles occasionally carry them from bad tags, and a
+// single one makes Rekordbox reject the whole file.
+const XML_INVALID = /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
 export function escapeXmlAttr(s: string): string {
   return s
+    .replace(XML_INVALID, '')
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')

@@ -1,53 +1,20 @@
 import { LibraryTrack } from '@/lib/agents/types';
 import { toCamelot } from './key-utils';
+import { stripBom, tagString16, tagString8, walkSeratoTags } from '@/lib/cues/serato/tags';
 
-function decodeUtf16BE(buf: Buffer): string {
-  const len = buf.length & ~1;
-  const swapped = Buffer.allocUnsafe(len);
-  for (let i = 0; i < len; i += 2) {
-    swapped[i]     = buf[i + 1];
-    swapped[i + 1] = buf[i];
-  }
-  return swapped.toString('utf16le');
-}
-
-function walkTags(buf: Buffer): Map<string, Buffer[]> {
-  const tags = new Map<string, Buffer[]>();
-  let pos = 0;
-  while (pos + 8 <= buf.length) {
-    const name = buf.toString('ascii', pos, pos + 4);
-    const length = buf.readUInt32BE(pos + 4);
-    pos += 8;
-    if (pos + length > buf.length) break;
-    const payload = buf.subarray(pos, pos + length);
-    pos += length;
-    if (!tags.has(name)) tags.set(name, []);
-    tags.get(name)!.push(payload);
-  }
-  return tags;
-}
+// Parses Serato's `database V2`. Works on a plain Uint8Array (Node's Buffer is a
+// subclass), so the same parser runs on the server upload route and in the
+// browser for the Serato → Rekordbox converter.
 
 // A real file path always contains a slash or backslash and is <2KB
 function looksLikePath(s: string): boolean {
   return s.length > 3 && s.length < 2000 && (s.includes('/') || s.includes('\\'));
 }
 
-function parseOtrk(payload: Buffer): { filePath?: string; title?: string; artist?: string; bpmStr?: string; key?: string; genre?: string; yearStr?: string } {
-  const tags = walkTags(payload);
-
-  const str16 = (name: string): string | undefined => {
-    const bufs = tags.get(name);
-    if (!bufs?.length) return undefined;
-    const decoded = decodeUtf16BE(bufs[0]);
-    return decoded || undefined;
-  };
-
-  const str8 = (name: string): string | undefined => {
-    const bufs = tags.get(name);
-    if (!bufs?.length) return undefined;
-    const decoded = bufs[0].toString('utf8');
-    return decoded || undefined;
-  };
+function parseOtrk(payload: Uint8Array): { filePath?: string; title?: string; artist?: string; bpmStr?: string; key?: string; genre?: string; yearStr?: string } {
+  const tags = walkSeratoTags(payload);
+  const str16 = (name: string) => tagString16(tags, name);
+  const str8 = (name: string) => tagString8(tags, name);
 
   // pfil/tpth/ptrk are UTF-16 BE; fall back to UTF-8 for older databases.
   // looksLikePath rejects garbled decodings (no slash = not a path).
@@ -76,16 +43,8 @@ export interface ParseSeratoDatabaseResult {
   count: number;
 }
 
-export function parseSeratoDatabase(buffer: Buffer): ParseSeratoDatabaseResult {
-  let buf = buffer;
-
-  if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
-    buf = buf.subarray(3);
-  } else if (buf.length >= 2 && buf[0] === 0xFF && buf[1] === 0xFE) {
-    buf = buf.subarray(2);
-  }
-
-  const topTags = walkTags(buf);
+export function parseSeratoDatabase(buffer: Uint8Array): ParseSeratoDatabaseResult {
+  const topTags = walkSeratoTags(stripBom(buffer));
   const otrkList = topTags.get('otrk') ?? [];
 
   const tracks: LibraryTrack[] = [];

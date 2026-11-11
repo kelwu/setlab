@@ -2,6 +2,7 @@ import { LibraryTrack } from '@/lib/agents/types';
 import { SetlistTrack } from '@/lib/agents/types';
 import { BRAND } from '../brand';
 import { isLocalFilePath } from './file-path';
+import { escapeXmlAttr } from '@/lib/cues/rekordbox-marks';
 
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -22,7 +23,7 @@ function findLibraryTrack(artist: string, title: string, library: LibraryTrack[]
   });
 }
 
-function toRekordboxLocation(filePath: string): string {
+export function toRekordboxLocation(filePath: string): string {
   let path = filePath.trim();
   // Strip existing file:// prefix (with optional localhost) so we can re-encode cleanly
   if (path.startsWith('file://')) {
@@ -43,13 +44,7 @@ function toRekordboxLocation(filePath: string): string {
   return 'file://localhost' + encoded;
 }
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
+const escapeXml = escapeXmlAttr;
 
 export function buildRekordboxXml(
   setlistName: string,

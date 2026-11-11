@@ -12,8 +12,12 @@
 // Only Layer III is handled (every Serato MP3). Returns null if no valid frame
 // sync is found in the window.
 
-import { u16be } from '../bytes';
+import { u16be, u32be } from '../bytes';
 import { Mp3TimingCase, Mp3TimingInfo } from '../types';
+
+// Layer III bitrates (kbps) by bitrate index; MPEG 2/2.5 share a table.
+const BITRATES_V1 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
+const BITRATES_V2 = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
 
 const SAMPLE_RATES: Record<number, number[]> = {
   3: [44100, 48000, 32000], // MPEG 1
@@ -29,6 +33,22 @@ export interface FrameAnalysis extends Mp3TimingInfo {
    *  algorithm against real files before we trust the C/D split. */
   storedCrc: number | null;
   computedCrc: number | null;
+  /** First frame's bitrate — the whole file's for CBR (used when no Xing count). */
+  bitrateKbps: number;
+  /** Audio frame count from the Xing/Info header, when present. */
+  xingFrames: number | null;
+}
+
+/**
+ * Track length in ms. Exact for files with a Xing/Info frame count (all VBR and
+ * LAME CBR files); otherwise estimated from the CBR bitrate and the audio byte
+ * length. Rekordbox shows no hot cues on an XML track with TotalTime="0", so the
+ * export always needs a value, and whole seconds is all the XML carries.
+ */
+export function mp3DurationMs(frame: FrameAnalysis, audioBytes: number): number {
+  if (frame.xingFrames) return Math.round((frame.xingFrames * frame.samplesPerFrame * 1000) / frame.sampleRate);
+  if (!frame.bitrateKbps) return 0;
+  return Math.round((Math.max(0, audioBytes) * 8) / frame.bitrateKbps);
 }
 
 // CRC-16/ARC (poly 0xA001 reflected, init 0x0000) — the algorithm LAME uses for
@@ -65,6 +85,7 @@ export function analyseFirstFrame(bytes: Uint8Array, from = 0, scanLen = 4096): 
   const versionId = (bytes[o + 1] >> 3) & 0x3;
   const protection = bytes[o + 1] & 0x1;            // 0 = CRC-protected (2 extra bytes)
   const srIdx = (bytes[o + 2] >> 2) & 0x3;
+  const bitrateKbps = (versionId === 3 ? BITRATES_V1 : BITRATES_V2)[(bytes[o + 2] >> 4) & 0xf];
   const channelMode = (bytes[o + 3] >> 6) & 0x3;    // 3 = mono
   const mono = channelMode === 3;
   const mpeg1 = versionId === 3;
@@ -78,14 +99,17 @@ export function analyseFirstFrame(bytes: Uint8Array, from = 0, scanLen = 4096): 
   const tag = xing + 4 <= bytes.length ? String.fromCharCode(bytes[xing], bytes[xing + 1], bytes[xing + 2], bytes[xing + 3]) : '';
   const xingType: 'Xing' | 'Info' | null = tag === 'Xing' ? 'Xing' : tag === 'Info' ? 'Info' : null;
 
-  const base = { timingCase: 'A' as Mp3TimingCase, sampleRate, samplesPerFrame, encoder: null as string | null, frameOffset: o, xingType, storedCrc: null as number | null, computedCrc: null as number | null };
+  const base = { timingCase: 'A' as Mp3TimingCase, sampleRate, samplesPerFrame, encoder: null as string | null, frameOffset: o, xingType, storedCrc: null as number | null, computedCrc: null as number | null, bitrateKbps, xingFrames: null as number | null };
 
   if (!xingType) return base; // case A
 
   // Skip the Xing fields to reach the LAME extension.
   const flags = (bytes[xing + 4] << 24) + (bytes[xing + 5] << 16) + (bytes[xing + 6] << 8) + bytes[xing + 7];
   let p = xing + 8;
-  if (flags & 0x1) p += 4;   // frame count
+  if (flags & 0x1) {         // frame count
+    if (p + 4 <= bytes.length) base.xingFrames = u32be(bytes, p) || null;
+    p += 4;
+  }
   if (flags & 0x2) p += 4;   // byte count
   if (flags & 0x4) p += 100; // TOC
   if (flags & 0x8) p += 4;   // quality
