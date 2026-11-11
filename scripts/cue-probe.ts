@@ -17,6 +17,7 @@
  */
 
 import { open, readdir, stat, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { join, basename, extname, resolve } from 'node:path';
 import type { ByteSource } from '../src/lib/cues/bytes';
 import { readSeratoMp3Cues } from '../src/lib/cues/serato/read';
@@ -46,6 +47,9 @@ async function collectMp3s(target: string, limit: number): Promise<string[]> {
     for (const ent of await readdir(dir, { withFileTypes: true })) {
       if (found.length >= limit) return;
       const p = join(dir, ent.name);
+      // Skip macOS debris on drives that lived on a Mac: "._x.mp3" AppleDouble
+      // stubs (not audio) and .Trashes / dot-folders.
+      if (ent.name.startsWith('.')) continue;
       if (ent.isDirectory()) { if (ent.name !== '_Serato_') await walk(p); }
       else if (extname(ent.name).toLowerCase() === '.mp3') found.push(p);
     }
@@ -81,6 +85,19 @@ function toFileUrl(abs: string): string {
     .map(seg => (seg === '' ? '' : /^[A-Za-z]:$/.test(seg) ? seg : encodeURIComponent(seg)))
     .join('/');
   return 'file://localhost' + enc;
+}
+
+// Real track metadata for the XML. Rekordbox drops (or never shows) position marks
+// on a TRACK with TotalTime="0" and no Kind/Size, so fill them from ffprobe when
+// it's installed; fall back to zeros (old behaviour) when it isn't.
+function trackMeta(file: string, bytes: number): { totalTime: number; artist: string; title: string; size: number } {
+  try {
+    const out = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration:format_tags=artist,title', '-of', 'json', file], { encoding: 'utf8' });
+    const f = (JSON.parse(out) as { format?: { duration?: string; tags?: { artist?: string; title?: string } } }).format ?? {};
+    return { totalTime: Math.round(Number(f.duration) || 0), artist: f.tags?.artist ?? '', title: f.tags?.title ?? '', size: bytes };
+  } catch {
+    return { totalTime: 0, artist: '', title: '', size: bytes };
+  }
 }
 
 function esc(s: string): string {
@@ -125,7 +142,7 @@ async function main() {
       }
       console.log('');
 
-      addToXml(track, file, id++, collection, playlist, offset);
+      addToXml(track, file, id++, collection, playlist, offset, trackMeta(file, src.size));
     } catch (err) {
       console.log(`! ${basename(file)}: ${(err as Error).message}\n`);
     } finally {
@@ -146,13 +163,17 @@ async function main() {
   console.log('Import into a BACKED-UP rekordbox 7.2.19.\n');
 }
 
-function addToXml(track: TrackCues, file: string, trackId: number, collection: string[], playlist: string[], offset: boolean) {
+function addToXml(
+  track: TrackCues, file: string, trackId: number, collection: string[], playlist: string[], offset: boolean,
+  meta: { totalTime: number; artist: string; title: string; size: number },
+) {
   if (!track.cues.length) return;
   const name = esc(basename(file, extname(file)));
   const cues = offset ? convertSeratoToRekordbox(track.cues, track.mp3) : track.cues;
   const marks = cuesToPositionMarks(cues); // loops as memory loops
   collection.push(
-    `    <TRACK TrackID="${trackId}" Name="${name}" Artist="" TotalTime="0" `
+    `    <TRACK TrackID="${trackId}" Name="${name}" Artist="${esc(meta.artist)}" Kind="MP3 File" `
+    + `Size="${meta.size}" TotalTime="${meta.totalTime}" SampleRate="${track.mp3?.sampleRate ?? 44100}" `
     + `Location="${esc(toFileUrl(file))}"${track.trackColor ? ` Colour="0x${rgbToHex(track.trackColor)}"` : ''}>\n`
     + marks + `\n    </TRACK>`,
   );

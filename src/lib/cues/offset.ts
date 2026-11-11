@@ -9,10 +9,12 @@
 // offset"): timing case D (a valid LAME tag) needs no correction; cases A/B/C
 // shift by one MPEG frame of samples (~26 ms at 44.1 kHz, ~24 ms at 48 kHz).
 //
-// IMPORTANT: Serato → Rekordbox is NOT documented anywhere. This is an
-// inference the Phase 0 measurement must confirm against real waveforms before
-// we trust it. Keeping the whole rule in this one function is what makes that
-// correction (and the Phase 2 reverse direction) a single tested place.
+// Serato → Rekordbox isn't documented anywhere, so this was measured (Phase 0,
+// 2026-11-10, rekordbox 7.2.19 on Windows): RAW Serato positions imported via
+// XML landed late on case A/B tracks by about one frame and exactly on case D,
+// at 44.1 kHz. Not yet observed: case C (rare) and A/B at 48 kHz. Keeping the
+// whole rule in this one function is what makes that correction (and the
+// Phase 2 reverse direction) a single tested place.
 
 import { CuePoint, Mp3TimingInfo } from './types';
 
