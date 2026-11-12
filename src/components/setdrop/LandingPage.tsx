@@ -617,6 +617,7 @@ export function LandingPage() {
           display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
           <span style={{ fontFamily:SD.mono, fontSize:12, color:SD.textMuted }}>© 2026 {BRAND.name}</span>
           <div style={{ display:'flex', gap:24 }}>
+            <a href="/terms" style={{ fontFamily:SD.mono, fontSize:12, color:SD.textMuted, textDecoration:'none' }}>Terms</a>
             <a href="/privacy" style={{ fontFamily:SD.mono, fontSize:12, color:SD.textMuted, textDecoration:'none' }}>Privacy Policy</a>
             <span style={{ fontFamily:SD.mono, fontSize:12, color:SD.textMuted }}>{BRAND.domain}</span>
           </div>

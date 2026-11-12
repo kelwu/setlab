@@ -211,8 +211,8 @@ export default function PrivacyPage() {
         </P>
         <P>
           We use Sentry to find and fix bugs. When an error happens, Sentry receives technical details
-          (browser, page, error message) and may record a short replay of the page leading up to the error,
-          which can include text shown on screen at that moment. See Section 4.
+          (browser, page, error message) and may record a short replay of the page leading up to the error.
+          Text on screen is masked in these replays, so they show layout and clicks, not your data. See Section 4.
         </P>
 
         {/* 3 */}
@@ -426,9 +426,10 @@ export default function PrivacyPage() {
         {/* 9 */}
         <H2>9. Children&apos;s Privacy</H2>
         <P>
-          {BRAND.name} is not directed at children under 13. We do not knowingly collect personal information
-          from anyone under 13. If you believe a child has provided us with personal data, contact us
-          and we will delete it promptly.
+          {BRAND.name} is for people 18 and older (see our{' '}
+          <a href="/terms" style={{ color: S.accent, textDecoration: 'none' }}>Terms of Service</a>). We do not
+          knowingly collect personal information from anyone under 18. If you believe a minor has provided us
+          with personal data, contact us and we will delete it promptly.
         </P>
 
         {/* 10 */}
