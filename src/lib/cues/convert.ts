@@ -24,6 +24,8 @@ export interface ConvertInput {
   /** When given, only these Serato paths are exported (and crates are pruned to them). */
   selected?: Set<string>;
   markOpts?: MarkOptions;
+  /** Carry Serato track colours (snapped to Rekordbox's palette). Default true. */
+  trackColours?: boolean;
 }
 
 export interface ConvertStats {
@@ -47,7 +49,7 @@ function kindOf(path: string): string | undefined {
 }
 
 export function convertSeratoLibrary(input: ConvertInput): { xml: string; stats: ConvertStats } {
-  const { dbTracks, crates, scans, root, selected, markOpts = {} } = input;
+  const { dbTracks, crates, scans, root, selected, markOpts = {}, trackColours = true } = input;
   const stats: ConvertStats = { tracks: 0, tracksWithCues: 0, cues: 0, notScanned: 0, streaming: 0, playlists: 0 };
 
   const rbTracks: RbTrack[] = [];
@@ -81,7 +83,7 @@ export function convertSeratoLibrary(input: ConvertInput): { xml: string; stats:
       durationMs: scan?.durationMs || undefined,
       sampleRate: tc?.mp3?.sampleRate,
       cues,
-      trackColor: tc?.trackColor,
+      trackColor: trackColours ? tc?.trackColor : null,
     });
     if (!scan) stats.notScanned++;
     if (cues?.length) { stats.tracksWithCues++; stats.cues += cues.length; }
