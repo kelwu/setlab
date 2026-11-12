@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:genres": "tsx scripts/check-genres.ts"
+    "check:genres": "tsx scripts/check-genres.ts",
+    "test": "vitest run",
+    "cue:probe": "tsx scripts/cue-probe.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
@@ -39,6 +41,7 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

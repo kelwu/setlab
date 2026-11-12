@@ -27,6 +27,9 @@ jobs:
       # spelling variants, super-family wall, secondary genre, version dedupe).
       - name: Genre checks
         run: npm run check:genres
+      # Vitest: cue engine (tag readers, offset, matcher, converter, validation).
+      - name: Unit tests
+        run: npm test
       - name: Lint (non-blocking until backlog cleared)
         run: npm run lint
         continue-on-error: true
