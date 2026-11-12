@@ -8,7 +8,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { SD } from '@/lib/setdrop/constants';
 import { SDButton, Card, PageHeader } from '../shared';
-import { gateExport } from '@/lib/setdrop/export-gate';
 import { downloadRekordboxXml } from '@/lib/setdrop/rekordbox-export';
 import { isLocalFilePath } from '@/lib/setdrop/file-path';
 import { parseSeratoDatabase } from '@/lib/setdrop/serato-db-parser';
@@ -23,15 +22,6 @@ import type { ScannedFile } from '@/lib/cues/scan';
 import { useCueScan } from '@/lib/cues/useCueScan';
 import { CueReview, ReviewRow, RowStatus } from './CueReview';
 
-interface Props {
-  /** Pro or beta: whole-library conversion and unlimited crates. */
-  unlimited: boolean;
-  /** Free exports left this month (null = unlimited). */
-  freeCratesLeft: number | null;
-  /** Serato crate ids already exported this month (re-export is free). */
-  alreadyExported: string[];
-}
-
 type Step = 'pick' | 'select' | 'scanning' | 'review' | 'done';
 
 interface Loaded {
@@ -45,12 +35,12 @@ interface Loaded {
 
 const SAVE_CHUNK = 500;
 
-export function ConvertWizard({ unlimited, freeCratesLeft, alreadyExported }: Props) {
+export function ConvertWizard() {
   const [step, setStep] = useState<Step>('pick');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lib, setLib] = useState<Loaded | null>(null);
-  const [mode, setMode] = useState<'library' | 'crates'>(unlimited ? 'library' : 'crates');
+  const [mode, setMode] = useState<'library' | 'crates'>('library');
   const [pickedCrates, setPickedCrates] = useState<Set<string>>(new Set());
   const [scans, setScans] = useState<Map<string, ScannedFile>>(new Map());
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
@@ -112,8 +102,6 @@ export function ConvertWizard({ unlimited, freeCratesLeft, alreadyExported }: Pr
     return [...set];
   }, [lib, mode, allCrates, pickedCrates]);
 
-  const newCratesNeeded = [...pickedCrates].filter(id => !alreadyExported.includes(id)).length;
-  const overFreeLimit = !unlimited && mode === 'crates' && freeCratesLeft !== null && newCratesNeeded > freeCratesLeft;
 
   // ── Step 2 → 3: scan ───────────────────────────────────────────────────────
   const startScan = async () => {
@@ -176,24 +164,12 @@ export function ConvertWizard({ unlimited, freeCratesLeft, alreadyExported }: Pr
   }, [rows, root]);
 
   // ── Step 4: export ─────────────────────────────────────────────────────────
-  const exportXml = async () => {
+  // Conversion is free for every signed-in DJ and doesn't count toward the
+  // monthly export limit (Lexicon converts whole libraries free; the paid value
+  // is cues travelling with SetLab's own set/crate exports).
+  const exportXml = () => {
     if (!lib) return;
     setError(null);
-    if (mode === 'library' && !unlimited) {
-      setError('Converting your whole library is a Pro feature. Upgrade to Pro, or choose up to 3 crates.');
-      return;
-    }
-    if (overFreeLimit) {
-      setError(`You have ${freeCratesLeft} free crate conversion${freeCratesLeft === 1 ? '' : 's'} left this month. Choose fewer crates, or upgrade to Pro for unlimited conversions.`);
-      return;
-    }
-    // Gate per crate (re-exports are free); whole library logs once.
-    const ids = mode === 'library' ? ['library'] : [...pickedCrates];
-    for (const id of ids) {
-      const gate = await gateExport('crate', `serato:${id}`, 'rekordbox-xml-cues');
-      if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
-    }
-
     const selected = new Set(rows.filter(r => !excluded.has(r.path)).map(r => r.path));
     const crates = mode === 'library' ? lib.crates : pruneCrateTree(lib.crates, pickedCrates);
     const { xml, stats } = convertSeratoLibrary({
@@ -233,7 +209,7 @@ export function ConvertWizard({ unlimited, freeCratesLeft, alreadyExported }: Pr
             fontFamily: SD.mono, fontSize: SD.t12, color: SD.text, lineHeight: 1.6,
           }}>
             {error}
-            {/Upgrade/.test(error) && <> <a href="/account" style={{ color: SD.accent }}>See Pro →</a></>}
+
           </div>
         )}
 
@@ -275,9 +251,9 @@ export function ConvertWizard({ unlimited, freeCratesLeft, alreadyExported }: Pr
 
             <div style={{ display: 'flex', gap: SD.s3, flexWrap: 'wrap', margin: `${SD.s5}px 0` }}>
               <ModeButton active={mode === 'library'} onClick={() => setMode('library')}
-                title="Whole library" sub={unlimited ? 'Every track and crate' : 'Pro'} />
+                title="Whole library" sub="Every track and crate" />
               <ModeButton active={mode === 'crates'} onClick={() => setMode('crates')}
-                title="Choose crates" sub={unlimited ? 'Pick what to move' : `Free: ${freeCratesLeft ?? 0} left this month`} />
+                title="Choose crates" sub="Pick what to move" />
             </div>
 
             {mode === 'crates' && (
@@ -285,18 +261,6 @@ export function ConvertWizard({ unlimited, freeCratesLeft, alreadyExported }: Pr
                 {lib.crates.length === 0 && <div style={{ ...p, padding: 16 }}>No crates in this library.</div>}
                 <CrateTree nodes={lib.crates} picked={pickedCrates} onToggle={toggleCrate} depth={0} />
               </div>
-            )}
-
-            {mode === 'library' && !unlimited && (
-              <p style={{ ...p, color: SD.accent }}>
-                Whole-library conversion is part of Pro. You can scan and review for free;{' '}
-                <a href="/account" style={{ color: SD.accent }}>upgrade</a> to download.
-              </p>
-            )}
-            {overFreeLimit && (
-              <p style={{ ...p, color: SD.warning }}>
-                {newCratesNeeded} new crates selected — {freeCratesLeft} free left this month. You can still scan and review.
-              </p>
             )}
 
             <div style={{ display: 'flex', gap: SD.s3, alignItems: 'center', marginTop: SD.s5, flexWrap: 'wrap' }}>

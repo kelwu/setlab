@@ -60,7 +60,7 @@ export default function PrivacyPage() {
         <div style={{ marginBottom: 48 }}>
           <div style={{ fontFamily: S.mono, fontSize: 12, color: S.textMuted,
             letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>
-            Last updated: June 25, 2026
+            Last updated: November 12, 2026
           </div>
           <h1 style={{ fontFamily: S.display, fontSize: 'clamp(48px,7vw,80px)',
             letterSpacing: 4, margin: '0 0 16px', lineHeight: .95, color: S.text }}>
@@ -78,9 +78,11 @@ export default function PrivacyPage() {
         {/* 1 */}
         <H2>1. What {BRAND.name} Is</H2>
         <P>
-          {BRAND.name} is a web app that helps DJs plan setlists. It imports your Serato library,
-          uses AI (Claude by Anthropic) to generate a sequenced set based on your gig context,
-          and exports the result back to Serato as a <code style={{ color: S.accent }}>.crate</code> file.
+          {BRAND.name} is a web app that helps DJs plan setlists. It imports your Serato or Rekordbox
+          library, uses AI (Claude by Anthropic) to generate a sequenced set based on your gig context,
+          and exports the result as a Serato <code style={{ color: S.accent }}>.crate</code>, a Rekordbox
+          XML file, or an M3U playlist. It also converts a Serato library — tracks, hot cues, loops,
+          colours and crates — into a Rekordbox XML file.
         </P>
         <P>
           {BRAND.name} is operated by Kel Wu, an individual developer. Contact:{' '}
@@ -119,6 +121,28 @@ export default function PrivacyPage() {
           <>File path (the path on your local machine as stored by Serato — used only to generate .crate files for re-import; {BRAND.name} never accesses your files remotely)</>,
         ]} />
         <P>Audio files are never uploaded. Only the text metadata above is stored.</P>
+
+        <p style={{ fontFamily: S.mono, fontSize: 13, color: S.textMuted,
+          letterSpacing: 1.5, textTransform: 'uppercase', margin: '24px 0 10px' }}>
+          Serato → Rekordbox Converter
+        </p>
+        <P>
+          When you use the converter, you choose a folder on your computer and your browser reads it
+          locally. {BRAND.name} reads only the Serato database, your crate files, and the tag data inside
+          each music file that holds Serato&apos;s cues. Your audio is never uploaded, and {BRAND.name} never
+          changes, moves or re-encodes your music files — the only thing it writes is the XML file you download.
+        </P>
+        <P>So your cues can travel with later {BRAND.name} exports, we store, per music file:</P>
+        <UL items={[
+          'The file path (as stored by Serato)',
+          'Hot cue and saved loop positions, names and colours, and the track colour',
+          'The comment tag text, if the file has one',
+          'Technical details needed to place cues correctly: MP3 encoder timing information, sample rate, duration and file size',
+          'A change marker (file size and last-modified time) so unchanged files can be skipped next time',
+        ]} />
+        <P>
+          This cue data is deleted when you clear your library or delete your account.
+        </P>
 
         <p style={{ fontFamily: S.mono, fontSize: 13, color: S.textMuted,
           letterSpacing: 1.5, textTransform: 'uppercase', margin: '24px 0 10px' }}>
@@ -170,10 +194,26 @@ export default function PrivacyPage() {
         <UL items={[
           'Your card or bank details (payments are handled entirely by Stripe — see above)',
           'Stored copies of your audio recordings or uploaded files (used for recognition, then discarded — see above)',
-          'Location data',
-          'Analytics or behavioral tracking data',
-          'Advertising identifiers',
+          'Your music files themselves (the converter reads cue tags locally; audio never leaves your computer)',
+          'Precise location data',
+          'Advertising identifiers — we do not run ads or sell data to advertisers',
         ]} />
+
+        <p style={{ fontFamily: S.mono, fontSize: 13, color: S.textMuted,
+          letterSpacing: 1.5, textTransform: 'uppercase', margin: '24px 0 10px' }}>
+          Usage Analytics &amp; Error Reports
+        </p>
+        <P>
+          We use Google Analytics to understand how {BRAND.name} is used: pages visited and product
+          events such as starting a set, exporting, or converting a library (counts and settings, not the
+          contents of your library). Google Analytics sets its own cookies and receives your IP address
+          and browser details.
+        </P>
+        <P>
+          We use Sentry to find and fix bugs. When an error happens, Sentry receives technical details
+          (browser, page, error message) and may record a short replay of the page leading up to the error,
+          which can include text shown on screen at that moment. See Section 4.
+        </P>
 
         {/* 3 */}
         <H2>3. How We Use Your Data</H2>
@@ -186,6 +226,9 @@ export default function PrivacyPage() {
           'To process your Pro subscription, unlock paid features, and generate invoices',
           'To enforce monthly usage limits on metered features like Track ID',
           'To display your setlist history on your dashboard',
+          'To convert your Serato library to Rekordbox and include your cues in later exports',
+          'To send product email — onboarding tips, feature announcements, and occasional check-ins if you haven’t been back in a while (you can unsubscribe from these at any time)',
+          'To measure usage and fix errors (Google Analytics and Sentry)',
         ]} />
         <P>We do not sell your data. We do not share it with third parties except as described in Section 4.</P>
 
@@ -262,9 +305,46 @@ export default function PrivacyPage() {
         </p>
         <P>
           {BRAND.name} uses Resend to send transactional email such as invoices. Your email address is
-          shared with Resend solely to deliver these messages. We do not send marketing email.{' '}
+          shared with Resend solely to deliver these messages.{' '}
           <a href="https://resend.com/legal/privacy-policy" style={{ color: S.accent, textDecoration: 'none' }}>
             Resend Privacy Policy ↗
+          </a>
+        </P>
+
+        <p style={{ fontFamily: S.mono, fontSize: 13, color: S.textMuted,
+          letterSpacing: 1.5, textTransform: 'uppercase', margin: '24px 0 10px' }}>
+          Loops
+        </p>
+        <P>
+          {BRAND.name} uses Loops to send product email: onboarding, feature announcements, and check-ins.
+          Loops receives your email address and basic account facts used to choose which emails to send
+          (for example, whether you have imported a library or exported a set). Every one of these emails
+          has an unsubscribe link.{' '}
+          <a href="https://loops.so/privacy" style={{ color: S.accent, textDecoration: 'none' }}>
+            Loops Privacy Policy ↗
+          </a>
+        </P>
+
+        <p style={{ fontFamily: S.mono, fontSize: 13, color: S.textMuted,
+          letterSpacing: 1.5, textTransform: 'uppercase', margin: '24px 0 10px' }}>
+          Google Analytics
+        </p>
+        <P>
+          Google Analytics measures page views and product events. It receives your IP address, browser
+          details and the events described in Section 2, and sets cookies to tell visits apart.{' '}
+          <a href="https://policies.google.com/privacy" style={{ color: S.accent, textDecoration: 'none' }}>
+            Google Privacy Policy ↗
+          </a>
+        </P>
+
+        <p style={{ fontFamily: S.mono, fontSize: 13, color: S.textMuted,
+          letterSpacing: 1.5, textTransform: 'uppercase', margin: '24px 0 10px' }}>
+          Sentry
+        </p>
+        <P>
+          Sentry collects error reports, and a replay of the page when an error occurs, so we can fix bugs.{' '}
+          <a href="https://sentry.io/privacy/" style={{ color: S.accent, textDecoration: 'none' }}>
+            Sentry Privacy Policy ↗
           </a>
         </P>
 
@@ -295,11 +375,15 @@ export default function PrivacyPage() {
         {/* 6 */}
         <H2>6. Cookies</H2>
         <P>
-          {BRAND.name} uses one cookie: the Supabase session cookie (prefixed <code style={{ color: S.accent }}>sb-</code>),
-          set when you log in. It is HTTP-only, Secure, and SameSite. It expires when you sign out or
-          after the session token expires (~1 hour, auto-refreshed while you&apos;re active).
+          {BRAND.name} sets one cookie of its own: the Supabase session cookie (prefixed{' '}
+          <code style={{ color: S.accent }}>sb-</code>), set when you log in. It is HTTP-only, Secure, and
+          SameSite. It expires when you sign out or after the session token expires (~1 hour,
+          auto-refreshed while you&apos;re active).
         </P>
-        <P>No advertising cookies. No analytics cookies. No third-party tracking of any kind.</P>
+        <P>
+          Google Analytics sets its own cookies (prefixed <code style={{ color: S.accent }}>_ga</code>) to
+          measure usage. No advertising cookies, and we do not sell or share your data for advertising.
+        </P>
 
         {/* 7 */}
         <H2>7. Your Rights</H2>
