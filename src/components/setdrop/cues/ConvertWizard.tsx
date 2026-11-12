@@ -17,7 +17,7 @@ import { analysePick } from '@/lib/cues/folder-pick';
 import {
   buildCrateTree, flattenCrates, parseSeratoCrate, pruneCrateTree, CrateNode,
 } from '@/lib/cues/serato/crate-reader';
-import { buildPickIndex, matchSeratoPath, guessLibraryRoot, detectPlatform, resolveAbsolutePath } from '@/lib/cues/match';
+import { matchLibrary, guessLibraryRoot, detectPlatform, resolveAbsolutePath } from '@/lib/cues/match';
 import { convertSeratoLibrary, ConvertStats } from '@/lib/cues/convert';
 import type { ScannedFile } from '@/lib/cues/scan';
 import { useCueScan } from '@/lib/cues/useCueScan';
@@ -85,13 +85,9 @@ export function ConvertWizard({ unlimited, freeCratesLeft, alreadyExported }: Pr
       const crates = buildCrateTree(crateFiles);
 
       const audioRel = layout.audioIndexes.map(i => rel[i]);
-      const index = buildPickIndex(audioRel);
+      const localPaths = dbTracks.map(t => t.filePath).filter((p): p is string => !!p && isLocalFilePath(p));
       const fileFor = new Map<string, number>();
-      for (const t of dbTracks) {
-        if (!t.filePath || !isLocalFilePath(t.filePath)) continue;
-        const hit = matchSeratoPath(t.filePath, index);
-        if (hit !== null) fileFor.set(t.filePath, layout.audioIndexes[hit]);
-      }
+      for (const [path, hit] of matchLibrary(localPaths, audioRel)) fileFor.set(path, layout.audioIndexes[hit]);
 
       const sample = dbTracks.find(t => t.filePath && isLocalFilePath(t.filePath))?.filePath ?? '';
       setRoot(guessLibraryRoot(sample, detectPlatform(navigator.userAgent), layout.topFolder));
