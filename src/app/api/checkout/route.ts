@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getStripe, PLANS } from '@/lib/stripe';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 export async function POST() {
   try {
@@ -28,7 +28,9 @@ export async function POST() {
         metadata: { supabase_user_id: user.id },
       });
       customerId = customer.id;
-      await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', user.id);
+      // Admin client: signed-in users can't write billing columns on `users`
+      // themselves (column privileges; see migration users_column_privileges).
+      await createAdminClient().from('users').update({ stripe_customer_id: customerId }).eq('id', user.id);
     }
 
     const origin = process.env.NEXT_PUBLIC_APP_URL;
