@@ -66,6 +66,22 @@ export function cueToPositionMarks(cue: CuePoint, opts: MarkOptions = {}): strin
   return lines;
 }
 
+/**
+ * Serato keeps 8 loop slots separate from its 8 hot cues, but Rekordbox's A–H
+ * pads are shared. With loopsAsHotcue, each loop takes the next pad no hot cue
+ * uses (in loop-slot order); loops that don't fit stay memory loops, so a hot
+ * cue is never displaced.
+ */
 export function cuesToPositionMarks(cues: CuePoint[], opts: MarkOptions = {}): string {
-  return cues.flatMap(c => cueToPositionMarks(c, opts)).join('\n');
+  let placed = cues;
+  if (opts.loopsAsHotcue) {
+    const used = new Set(cues.filter(c => c.kind === 'hotcue' && c.slot != null).map(c => c.slot!));
+    const free = [0, 1, 2, 3, 4, 5, 6, 7].filter(s => !used.has(s));
+    const loopsInOrder = cues
+      .filter(c => c.kind === 'loop')
+      .sort((a, b) => (a.slot ?? 99) - (b.slot ?? 99));
+    const padFor = new Map(loopsInOrder.map((c, i) => [c, free[i] ?? null] as const));
+    placed = cues.map(c => (c.kind === 'loop' ? { ...c, slot: padFor.get(c) ?? null } : c));
+  }
+  return placed.flatMap(c => cueToPositionMarks(c, opts)).join('\n');
 }

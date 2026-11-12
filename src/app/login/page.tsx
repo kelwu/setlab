@@ -209,6 +209,13 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Shown in both modes: "Continue with Google" also creates new accounts. */}
+        <p style={{ textAlign: 'center', marginTop: 16, marginBottom: 0, fontSize: 12, lineHeight: 1.6, color: SD.textMuted }}>
+          By continuing you confirm you&apos;re 18 or older and agree to the{' '}
+          <a href="/terms" style={{ color: SD.textSec }}>Terms of Service</a> and{' '}
+          <a href="/privacy" style={{ color: SD.textSec }}>Privacy Policy</a>.
+        </p>
+
         <div style={{
           textAlign: 'center', marginTop: 24,
           fontSize: 13, color: SD.textSec,

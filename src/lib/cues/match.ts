@@ -23,25 +23,30 @@ function segments(p: string): string[] {
   return normalizeRelPath(p).split('/').filter(Boolean);
 }
 
-/** Map every path suffix of each picked file to its index (-1 when two picked
- *  files share that suffix, so it can't decide a match on its own). */
+/**
+ * Index each picked file under its full relative path and under that path
+ * minus the picked folder's own name ("Music/House/a.mp3" → also
+ * "House/a.mp3"). Nothing shorter: DJs keep copies of the same song in several
+ * folders, often with different cues, so a bare-filename match would silently
+ * export the wrong copy's cues. -1 marks a key two picked files share.
+ */
 export function buildPickIndex(pickedRelPaths: string[]): Map<string, number> {
   const index = new Map<string, number>();
   pickedRelPaths.forEach((rel, i) => {
     const segs = segments(rel);
-    for (let k = segs.length - 1; k >= 0; k--) {
-      const suffix = segs.slice(k).join('/');
-      const prev = index.get(suffix);
-      index.set(suffix, prev === undefined || prev === i ? i : -1);
+    const keys = new Set([segs.join('/'), segs.slice(1).join('/')].filter(Boolean));
+    for (const key of keys) {
+      const prev = index.get(key);
+      index.set(key, prev === undefined || prev === i ? i : -1);
     }
   });
   return index;
 }
 
 /**
- * Index of the picked file for a Serato path, by the longest shared suffix that
- * points at exactly one picked file. A bare filename counts, as long as only
- * one picked file has it. null = not found in the pick (or ambiguous).
+ * Index of the picked file for a Serato path: the Serato path must END with the
+ * picked file's whole path inside the picked folder. null = not in the pick
+ * (Serato wouldn't find it there either) or ambiguous.
  */
 export function matchSeratoPath(seratoPath: string, index: Map<string, number>): number | null {
   const segs = segments(seratoPath);
@@ -50,6 +55,41 @@ export function matchSeratoPath(seratoPath: string, index: Map<string, number>):
     if (hit !== undefined) return hit >= 0 ? hit : null;
   }
   return null;
+}
+
+/**
+ * Match a whole library at once. Per-track matching can't tell two folders with
+ * the same name apart ("Users/kel/Music/x.mp3" vs "Users/kel/OneDrive/Music/x.mp3"
+ * when the DJ picked the first), so: match each track, find the Serato path
+ * prefix most matches share (= where the picked folder lives), then keep only
+ * matches with that prefix. Returns Serato path → picked index.
+ */
+export function matchLibrary(seratoPaths: string[], pickedRelPaths: string[]): Map<string, number> {
+  const index = buildPickIndex(pickedRelPaths);
+  const pickedSegs = pickedRelPaths.map(segments);
+  const hits: { path: string; pick: number; prefix: string }[] = [];
+  const votes = new Map<string, number>();
+
+  for (const path of seratoPaths) {
+    const pick = matchSeratoPath(path, index);
+    if (pick === null) continue;
+    // The Serato path is <prefix>/<picked path, possibly minus its top folder>.
+    // Normalise the prefix to "what sits above the picked folder".
+    const s = segments(path);
+    const p = pickedSegs[pick];
+    const withTop = s.slice(-p.length).join('/') === p.join('/');
+    const prefix = s.slice(0, s.length - (withTop ? p.length : p.length - 1)).join('/') + (withTop ? '' : '/?');
+    hits.push({ path, pick, prefix });
+    votes.set(prefix, (votes.get(prefix) ?? 0) + 1);
+  }
+
+  let root = '';
+  let best = -1;
+  for (const [prefix, n] of votes) if (n > best) { best = n; root = prefix; }
+
+  const out = new Map<string, number>();
+  for (const h of hits) if (h.prefix === root) out.set(h.path, h.pick);
+  return out;
 }
 
 const DRIVE = /^\/?[A-Za-z]:[/\\]/;

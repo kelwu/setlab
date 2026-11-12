@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseSeratoCrate, crateNamePath, buildCrateTree } from '../serato/crate-reader';
 import { parseSeratoDatabase } from '@/lib/setdrop/serato-db-parser';
-import { buildPickIndex, matchSeratoPath, resolveAbsolutePath, guessLibraryRoot, normalizeRelPath } from '../match';
+import { buildPickIndex, matchSeratoPath, matchLibrary, resolveAbsolutePath, guessLibraryRoot, normalizeRelPath } from '../match';
 import { convertSeratoLibrary, CONVERT_FOLDER_NAME } from '../convert';
 import { sanitizeTrackCues, MAX_CUES_PER_TRACK, MAX_NAME_LEN } from '../validate';
 import { escapeXmlAttr } from '../rekordbox-marks';
@@ -71,6 +71,26 @@ describe('path matching', () => {
   it('refuses an ambiguous bare filename and reports missing files', () => {
     expect(matchSeratoPath('Elsewhere/a.mp3', index)).toBeNull();
     expect(matchSeratoPath('Users/kel/Music/House/zzz.mp3', index)).toBeNull();
+  });
+  it('never matches a same-named copy in a different folder', () => {
+    // Real case: "Daruma Playlist/Blinding Lights.mp3" must not pick up the copy
+    // one folder up, which carries different cues.
+    const idx = buildPickIndex(['Music/Crate/Blinding Lights.mp3']);
+    expect(matchSeratoPath('Users/kel/Music/Crate/Daruma Playlist/Blinding Lights.mp3', idx)).toBeNull();
+    expect(matchSeratoPath('Users/kel/Music/Crate/Blinding Lights.mp3', idx)).toBe(0);
+  });
+  it('matches when the pick is a drive root (Serato path has no user prefix)', () => {
+    const idx = buildPickIndex(['DJ SSD/_sDJ Music/House/a.mp3']);
+    expect(matchSeratoPath('_sDJ Music/House/a.mp3', idx)).toBe(0);
+  });
+  it('matchLibrary rejects a same-named folder elsewhere on the drive', () => {
+    const picked = ['Music/Crate/a.mp3', 'Music/Crate/b.mp3', 'Music/Crate/c.mp3'];
+    const m = matchLibrary([
+      'Users/kel/Music/Crate/a.mp3',
+      'Users/kel/Music/Crate/b.mp3',
+      'Users/kel/OneDrive/Music/Crate/c.mp3', // a different file that only looks the same
+    ], picked);
+    expect([...m.keys()]).toEqual(['Users/kel/Music/Crate/a.mp3', 'Users/kel/Music/Crate/b.mp3']);
   });
   it('normalizes file:// URLs', () => {
     expect(normalizeRelPath('file://localhost/Users/Kel/A%20B.mp3')).toBe('users/kel/a b.mp3');

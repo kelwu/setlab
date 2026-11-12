@@ -192,6 +192,7 @@ body::after {
   .sd-inner-pad { padding: 32px 20px 80px !important; }
   .sd-arc-wrap { overflow-x: auto; }
   .sd-bottom-nav { display: flex !important; }
+  .sd-hide-mobile { display: none !important; }
   .sd-fab { bottom: 78px !important; }
   .sd-fab-panel { bottom: 138px !important; }
 }

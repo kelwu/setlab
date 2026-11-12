@@ -8,8 +8,10 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0,
   replaysSessionSampleRate: 0,
   integrations: [
+    // Mask on-screen text in error replays: replays still show clicks, layout
+    // and the error path, but not users' emails, track names or other text.
     Sentry.replayIntegration({
-      maskAllText: false,
+      maskAllText: true,
       blockAllMedia: false,
     }),
   ],

@@ -26,6 +26,8 @@ export function crateNamePath(filename: string): string[] {
 }
 
 export interface CrateNode {
+  /** Full nesting path, Serato-style ("Parent%%Child") — unique per crate. */
+  id: string;
   name: string;
   /** Track paths stored directly in this crate (may be empty for pure folders). */
   tracks: string[];
@@ -44,15 +46,35 @@ export function buildCrateTree(crates: { filename: string; tracks: string[] }[])
     if (!path.length) continue;
     let level = roots;
     let node: CrateNode | undefined;
-    for (const name of path) {
+    path.forEach((name, depth) => {
       node = level.find(n => n.name === name);
       if (!node) {
-        node = { name, tracks: [], children: [] };
+        node = { id: path.slice(0, depth + 1).join('%%'), name, tracks: [], children: [] };
         level.push(node);
       }
       level = node.children;
-    }
+    });
     node!.tracks = tracks;
   }
   return roots;
+}
+
+/** Depth-first list of every crate in the tree. */
+export function flattenCrates(tree: CrateNode[]): CrateNode[] {
+  return tree.flatMap(n => [n, ...flattenCrates(n.children)]);
+}
+
+/**
+ * Keep only the selected crates. Ancestors of a selected crate stay as plain
+ * folders (their own tracks dropped unless they're selected too), so the
+ * exported playlist tree keeps its Serato nesting.
+ */
+export function pruneCrateTree(tree: CrateNode[], selected: Set<string>): CrateNode[] {
+  const out: CrateNode[] = [];
+  for (const n of tree) {
+    const children = pruneCrateTree(n.children, selected);
+    const keep = selected.has(n.id);
+    if (keep || children.length) out.push({ ...n, tracks: keep ? n.tracks : [], children });
+  }
+  return out;
 }

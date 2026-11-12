@@ -1008,7 +1008,10 @@ export function Library() {
             <h1 style={{ fontFamily:SD.display, fontSize:52, letterSpacing:4,
               margin:0, color:SD.text, lineHeight:1 }}>YOUR LIBRARY</h1>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <SDButton ghost href="/convert" style={{ fontSize:12, padding:'7px 14px' }}>
+              Serato → Rekordbox
+            </SDButton>
             {uploadedTracks ? (
               <>
                 {(() => {
