@@ -590,6 +590,7 @@ export function LandingPage() {
                 ['How It Works', '#how-it-works'],
                 ['Demo',         '#demo'],
                 ['Pricing',      '#pricing'],
+                ['Serato → Rekordbox', '/serato-to-rekordbox'],
               ] as [string, string][]).map(([label, href]) => (
                 <a key={label} href={href} className="sd-footer-link"
                   style={{ fontFamily:SD.mono, fontSize:13 }}>

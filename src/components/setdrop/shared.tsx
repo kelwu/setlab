@@ -145,6 +145,17 @@ export function Nav() {
                 >
                   Invoice Generator
                 </Link>
+                <Link href="/convert"
+                  style={{
+                    display:'block', padding:'10px 14px', fontSize:13, color:SD.textSec,
+                    fontFamily:SD.mono, letterSpacing:1, textTransform:'uppercase',
+                    cursor:'pointer', transition:'background .12s', textDecoration:'none',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = SD.surface)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  Serato → Rekordbox
+                </Link>
                 <div
                   onClick={handleSignOut}
                   style={{

@@ -2,7 +2,8 @@ import { LibraryTrack } from '@/lib/agents/types';
 import { SetlistTrack } from '@/lib/agents/types';
 import { BRAND } from '../brand';
 import { isLocalFilePath } from './file-path';
-import { escapeXmlAttr } from '@/lib/cues/rekordbox-marks';
+import { buildRekordboxLibraryXml, kindForPath, RbTrack, toRekordboxLocation } from '@/lib/cues/rekordbox-library-xml';
+import type { ExportCue } from '@/lib/cues/lookup';
 
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -23,88 +24,71 @@ function findLibraryTrack(artist: string, title: string, library: LibraryTrack[]
   });
 }
 
-export function toRekordboxLocation(filePath: string): string {
-  let path = filePath.trim();
-  // Strip existing file:// prefix (with optional localhost) so we can re-encode cleanly
-  if (path.startsWith('file://')) {
-    path = decodeURIComponent(path.replace(/^file:\/\/(localhost)?/, ''));
-  }
-  // Windows absolute path: C:\... or C:/... → /C:/...
-  if (/^[A-Za-z]:[/\\]/.test(path)) {
-    path = '/' + path.replace(/\\/g, '/');
-  }
-  // Ensure leading slash
-  if (!path.startsWith('/')) path = '/' + path;
-  // Encode every segment — handles #, %, &, spaces, parens, apostrophes, etc. — but
-  // keep a Windows drive letter's colon literal: encodeURIComponent turns "C:" into
-  // "C%3A", which Rekordbox can't resolve back to a real file path.
-  const encoded = path.split('/')
-    .map(seg => (seg === '' ? '' : /^[A-Za-z]:$/.test(seg) ? seg : encodeURIComponent(seg)))
-    .join('/');
-  return 'file://localhost' + encoded;
+export { toRekordboxLocation };
+
+export interface RekordboxXmlOptions {
+  /** Hot cues per library file path (from /api/cues/lookup). Pro only. */
+  cues?: Map<string, ExportCue>;
 }
 
-const escapeXml = escapeXmlAttr;
+/** The library tracks an export will contain, in set order (local files only). */
+export function matchExportTracks(tracks: SetlistTrack[], library: LibraryTrack[]): LibraryTrack[] {
+  const out: LibraryTrack[] = [];
+  for (const t of tracks) {
+    const found = findLibraryTrack(t.artist, t.title, library);
+    if (found?.filePath && isLocalFilePath(found.filePath)) out.push(found);
+  }
+  return out;
+}
 
 export function buildRekordboxXml(
   setlistName: string,
   tracks: SetlistTrack[],
   library: LibraryTrack[],
-): { xml: string; matched: number; skipped: number } {
+  opts: RekordboxXmlOptions = {},
+): { xml: string; matched: number; skipped: number; withCues: number } {
   // Match setlist tracks to library file paths. We also carry the matched library
   // track's genre/year: the SetlistTrack itself has neither (see types.ts), but the
   // Rekordbox XML embeds metadata inline, so pulling them from the library entry is
   // what makes genre — a field DJs sort/filter on — actually populate on import.
-  const matched: Array<{ track: SetlistTrack; filePath: string; genre: string; year: string; id: number }> = [];
-  let idCounter = 1;
+  const rbTracks: RbTrack[] = [];
+  let found = 0;
+  let withCues = 0;
 
   for (const t of tracks) {
-    const found = findLibraryTrack(t.artist, t.title, library);
-    if (found) {
-      matched.push({
-        track: t,
-        filePath: found.filePath ?? '',
-        genre: found.genre ?? '',
-        year: found.year ? String(found.year) : '',
-        id: idCounter++,
-      });
-    }
+    const lib = findLibraryTrack(t.artist, t.title, library);
+    if (!lib) continue;
+    found++;
+    const filePath = lib.filePath ?? '';
+    // Skip streaming references (SoundCloud/TIDAL/etc.) — they have no local file to
+    // point Rekordbox at, so including them produces broken "missing file" entries.
+    if (!isLocalFilePath(filePath)) continue;
+    const cue = opts.cues?.get(filePath);
+    const year = Number(lib.year);
+    rbTracks.push({
+      id: rbTracks.length + 1,
+      location: filePath,
+      name: t.title,
+      artist: t.artist,
+      genre: lib.genre || undefined,
+      year: Number.isFinite(year) && year > 0 ? year : undefined,
+      bpm: t.bpm || undefined,
+      tonality: t.key || undefined,
+      // Rekordbox shows no hot cues on an XML track without its real length,
+      // size and kind (Phase 0) — so those come with the cues.
+      ...(cue ? {
+        kind: kindForPath(filePath),
+        sizeBytes: cue.sizeBytes,
+        durationMs: cue.durationMs,
+        sampleRate: cue.sampleRate,
+        cues: cue.cues,
+      } : {}),
+    });
+    if (cue?.cues.length) withCues++;
   }
 
-  // Skip streaming references (SoundCloud/TIDAL/etc.) — they have no local file to
-  // point Rekordbox at, so including them produces broken "missing file" entries.
-  const exportable = matched.filter(m => isLocalFilePath(m.filePath));
-  const skipped = matched.length - exportable.length;
-
-  const collectionEntries = exportable.map(({ track, filePath, genre, year, id }) => {
-    const location = toRekordboxLocation(filePath);
-    return `    <TRACK TrackID="${id}" Name="${escapeXml(track.title)}" Artist="${escapeXml(track.artist)}" `
-      + `TotalTime="0" DiscNumber="0" TrackNumber="0" Year="${escapeXml(year)}" Genre="${escapeXml(genre)}" Album="" `
-      + `AverageBpm="${track.bpm.toFixed(2)}" Comments="" Rating="0" `
-      + `Location="${escapeXml(location)}" Remixer="" Tonality="${escapeXml(track.key)}" `
-      + `Label="" Mix=""/>`;
-  }).join('\n');
-
-  const playlistTracks = exportable
-    .map(({ id }) => `        <TRACK Key="${id}"/>`)
-    .join('\n');
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<DJ_PLAYLISTS Version="1.0.0">
-  <PRODUCT Name="rekordbox" Version="6.0.0" Company="AlphaTheta"/>
-  <COLLECTION Entries="${exportable.length}">
-${collectionEntries}
-  </COLLECTION>
-  <PLAYLISTS>
-    <NODE Type="0" Name="ROOT" Count="1">
-      <NODE Name="${escapeXml(setlistName)}" Type="1" KeyType="0" Entries="${exportable.length}">
-${playlistTracks}
-      </NODE>
-    </NODE>
-  </PLAYLISTS>
-</DJ_PLAYLISTS>`;
-
-  return { xml, matched: exportable.length, skipped };
+  const xml = buildRekordboxLibraryXml(rbTracks, [{ name: setlistName, trackIds: rbTracks.map(r => r.id) }]);
+  return { xml, matched: rbTracks.length, skipped: found - rbTracks.length, withCues };
 }
 
 // --- M3U export (simpler Rekordbox import: File → Import → Import Playlist) ---

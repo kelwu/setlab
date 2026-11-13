@@ -2,7 +2,7 @@
 
 > **Purpose:** Single source of truth for writing accurate SetLab email campaigns (Loops).
 > Keep this current — update the "What's New" section whenever a feature ships.
-> Last updated: 2026-11-07.
+> Last updated: 2026-11-12.
 
 ---
 
@@ -60,6 +60,13 @@ Lead with the **benefit**, support with the **feature**.
 - **One-click export** — Serato `.crate`, Rekordbox XML, or M3U playlist.
 - **Works with your tools** — Serato DJ Pro, Rekordbox (import + export); Beatport, Traxsource, BPM Supreme, DJcity (purchase bridge — tells you where to buy tracks you don't own yet).
 
+### Serato → Rekordbox converter *(new, free)*
+- **Move your whole Serato library to Rekordbox, hot cues and all** — tracks, hot cues (names + colours), saved loops, track colours, comments, and crates as playlists, in one Rekordbox XML. Free for any SetLab account; whole library; no trial. Landing page: setlab.ai/serato-to-rekordbox (tool at setlab.ai/convert).
+- **Private by design** — runs in the browser; audio never leaves the DJ's computer and files are never modified.
+- **Cues that land on the beat** — corrects the ~26 ms MP3 timing difference between Serato and Rekordbox per file (measured in Rekordbox 7). Competitors that copy cues as-is land them late.
+- **Limits to state honestly:** MP3 cues only for now (AIFF/M4A/FLAC tracks move without cues); no beatgrids or smart crates; one direction (Serato → Rekordbox).
+- **Pro hook:** once converted, hot cues ride along inside every Rekordbox XML export of SetLab sets and crates ("Include hot cues" toggle).
+
 ### More
 - **Track ID** — Identify tracks (from a clip/recording).
 - **Explore** — Browse public/shared sets for inspiration.
@@ -79,6 +86,8 @@ Lead with the **benefit**, support with the **feature**.
 | Exports (Serato / Rekordbox / M3U) | 3 / month | Unlimited |
 | Track IDs | 10 / month | 500 / month |
 | Library upload + BPM/key enrichment | ✓ | ✓ |
+| Serato → Rekordbox library conversion (with cues) | ✓ | ✓ |
+| Hot cues inside set/crate Rekordbox exports | — | ✓ |
 
 - No credit card required for Free. Cancel Pro anytime.
 - \*Free generation is "unlimited for normal use" with a light daily anti-abuse cap.
@@ -90,6 +99,8 @@ Lead with the **benefit**, support with the **feature**.
 
 Most recent first. Convert these into "we just shipped…" emails.
 
+- **Free Serato → Rekordbox converter, hot cues and all** — move your whole Serato library into Rekordbox in a few minutes: every track, your hot cues with their names and colours, saved loops, track colours, comments, and your crates as playlists. It runs in your browser — your music never leaves your computer and your files are never touched — and it fixes the ~26 ms MP3 timing gap that makes copied cues land late in Rekordbox, so cues sit on the beat where you set them. Free with any SetLab account, whole library, no trial: setlab.ai/serato-to-rekordbox. **Pro:** your hot cues now travel inside the Rekordbox XML exports of your SetLab sets and crates too. *(MP3 cues in this version; AIFF/M4A coming. Back up Rekordbox before importing.)*
+- **Terms of Service + clearer privacy policy** — SetLab now has Terms (setlab.ai/terms), and the privacy policy spells out exactly which services we use (analytics, error reporting, email). Internal/trust note — not a campaign on its own.
 - **Sets stay in your genres, with no repeat songs** — a set now draws from all your tagged tracks in the genres you picked (including the secondary genre and the wider family), so a Disco House / Nu Disco set fills with real house and nu disco instead of untagged or hip-hop filler. Clean, dirty, extended, and intro versions of one song now count as one song, so the same record can't appear twice; SetLab plays the clean version for wedding, corporate, and radio crowds and the extended version otherwise. *(Also fixes the "Nu Disco" genre not being recognized, and makes set planning more reliable.)*
 - **Rekordbox & M3U exports now import a populated playlist** — fixed a bug where an exported Rekordbox playlist could import completely empty; your set now lands as a full playlist with every owned track linked. Streaming-only tracks (SoundCloud/TIDAL/etc.) that can't live in a DJ app are now flagged and skipped with a count instead of silently producing an empty file, and M3U exports use standard line endings for clean imports across DJ apps. *(Verified by a real Rekordbox user importing a rebuilt set.)*
 - **Auto-tag missing genres (and BPM/key) in one click** — if your Rekordbox or Serato import came in with blank genres, SetLab now estimates and fills them (plus any missing BPM or key) with AI, right from the Library tab. Genre powers genre-based sets and crates, so a library that imported without it can finally build them. *(Rekordbox collections often arrive with no genre at all — this closes that gap.)*

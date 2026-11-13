@@ -9,7 +9,8 @@ import { trackEvent, type LibraryUploadFailReason } from '@/lib/analytics';
 import { LibraryTrack, SetlistTrack } from '@/lib/agents/types';
 import { parseRekordboxLibrary, type RekordboxPlaylist } from '@/lib/setdrop/rekordbox-parser';
 import { buildCrate, downloadCrate } from '@/lib/setdrop/serato-crate';
-import { buildRekordboxXml, buildM3u, downloadRekordboxXml, downloadM3u } from '@/lib/setdrop/rekordbox-export';
+import { buildRekordboxXml, buildM3u, downloadRekordboxXml, downloadM3u, matchExportTracks } from '@/lib/setdrop/rekordbox-export';
+import { CueExportToggle, useCueExport } from './cues/CueExportToggle';
 import { gateExport } from '@/lib/setdrop/export-gate';
 import { SDButton, SDInput, ConfidenceBadge, EnergyDot, Tabs } from './shared';
 
@@ -587,6 +588,7 @@ export function Library() {
   const [crateGenerating, setCrateGenerating] = useState(false);
   const [crateError, setCrateError] = useState<string | null>(null);
   const [crateExportError, setCrateExportError] = useState<string | null>(null);
+  const cueExport = useCueExport();
   const [activeCrate, setActiveCrate] = useState<ActiveCrate | null>(null);
 
   useEffect(() => {
@@ -924,11 +926,13 @@ export function Library() {
       id: t.id, artist: t.artist, title: t.title, bpm: t.bpm ?? 0, key: t.key ?? '',
       genre: t.genre ?? undefined, filePath: t.filePath ?? undefined, isWishlist: false,
     }));
-    const { xml } = buildRekordboxXml(crate.name, pseudoSetlist, pseudoLibrary);
+    const cues = await cueExport.lookup(matchExportTracks(pseudoSetlist, pseudoLibrary));
+    const { xml, matched, withCues } = buildRekordboxXml(crate.name, pseudoSetlist, pseudoLibrary, { cues });
     const gate = await gateExport('crate', crate.id, 'rekordbox-xml');
     if (!gate.ok) { setCrateExportError(gate.message ?? 'Export limit reached'); return; }
     setCrateExportError(null);
     downloadRekordboxXml(xml, crate.name);
+    if (cues) trackEvent.cueExportCompleted('crate', matched, withCues);
   };
 
   const exportCrateM3u = async (crate: ActiveCrate) => {
@@ -1397,6 +1401,7 @@ export function Library() {
                     </SDButton>
                   </div>
                 </div>
+                <CueExportToggle state={cueExport} source="crate" />
                 {crateExportError && (
                   <div style={{
                     marginBottom:12, padding:'10px 14px',

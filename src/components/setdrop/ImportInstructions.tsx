@@ -60,13 +60,15 @@ const GUIDES: Record<ImportPlatform, { label: string; steps: (c: Ctx) => React.R
 };
 
 export function ImportInstructions({
-  platform, name, matched, total, kind = 'set', onDismiss,
+  platform, name, matched, total, kind = 'set', cues = 0, onDismiss,
 }: {
   platform: ImportPlatform;
   name: string;
   matched?: number;
   total?: number;
   kind?: 'set' | 'crate';
+  /** Tracks in a Rekordbox XML export that carry hot cues. */
+  cues?: number;
   onDismiss: () => void;
 }) {
   const g = GUIDES[platform];
@@ -124,6 +126,18 @@ export function ImportInstructions({
           </li>
         ))}
       </ol>
+
+      {platform === 'rekordbox-xml' && cues > 0 && (
+        <div style={{
+          marginTop: 14, paddingTop: 12, borderTop: `1px solid ${SD.borderMid}`,
+          fontFamily: SD.body, fontSize: SD.t12, color: SD.textSec, lineHeight: 1.6,
+        }}>
+          <strong style={{ color: SD.text }}>{cues} track{cues === 1 ? '' : 's'} carry hot cues.</strong>{' '}
+          Back up first: <Mono>File → Library → Backup Library</Mono>. For tracks already in your collection, open the
+          playlist under <strong>rekordbox xml</strong>, select its tracks, right-click → <strong>Import To
+          Collection</strong> to bring the cues in — their existing hot cues in the same pads may be replaced. When checking a cue, turn Quantize off so it isn’t snapped to the grid.
+        </div>
+      )}
     </div>
   );
 }

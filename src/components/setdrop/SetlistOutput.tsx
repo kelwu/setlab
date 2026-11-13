@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { SD, SAMPLE_TRACKS } from '@/lib/setdrop/constants';
 import { GeneratedSetlist, SetlistTrack, LibraryTrack } from '@/lib/agents/types';
 import { buildCrate, downloadCrate } from '@/lib/setdrop/serato-crate';
-import { buildRekordboxXml, downloadRekordboxXml, buildM3u, downloadM3u } from '@/lib/setdrop/rekordbox-export';
+import { buildRekordboxXml, downloadRekordboxXml, buildM3u, downloadM3u, matchExportTracks } from '@/lib/setdrop/rekordbox-export';
 import { isLocalFilePath } from '@/lib/setdrop/file-path';
 import { createClient } from '@/lib/supabase/client';
 import { SDButton } from './shared';
@@ -13,6 +13,8 @@ import { SetView, toDisplayTracks, type ResolvedUrls } from './SetView';
 import { ImportInstructions, type ImportPlatform } from './ImportInstructions';
 import { BRAND } from '@/lib/brand';
 import { gateExport } from '@/lib/setdrop/export-gate';
+import { trackEvent } from '@/lib/analytics';
+import { CueExportToggle, useCueExport } from './cues/CueExportToggle';
 
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -134,7 +136,8 @@ export function SetlistOutput() {
   const [showRegen, setShowRegen] = useState(false);
   const [regenNote, setRegenNote] = useState('');
   const [crateStatus, setCrateStatus] = useState<string | null>(null);
-  const [importGuide, setImportGuide] = useState<{ platform: ImportPlatform; matched: number; total: number } | null>(null);
+  const [importGuide, setImportGuide] = useState<{ platform: ImportPlatform; matched: number; total: number; cues?: number } | null>(null);
+  const cueExport = useCueExport();
   const [libraryOnly, setLibraryOnly] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [making, setMaking] = useState(false);
@@ -300,7 +303,8 @@ export function SetlistOutput() {
 
     if (!library.length) { setCrateStatus('Upload your library first so we can match file paths.'); return; }
     const tracks = libraryOnly ? setlist.tracks.filter(t => !t.isWishlistTrack) : setlist.tracks;
-    const { xml, matched, skipped } = buildRekordboxXml(setlist.name, tracks, library);
+    const cues = await cueExport.lookup(matchExportTracks(tracks, library));
+    const { xml, matched, skipped, withCues } = buildRekordboxXml(setlist.name, tracks, library, { cues });
     if (!matched) {
       setCrateStatus(skipped > 0 ? ALL_STREAMING_MSG : 'No tracks matched. Re-upload your library file in the Library tab.');
       return;
@@ -308,8 +312,9 @@ export function SetlistOutput() {
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'rekordbox-xml');
     if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
     downloadRekordboxXml(xml, setlist.name);
+    if (cues) trackEvent.cueExportCompleted('setlist', matched, withCues);
     setCrateStatus(skipped > 0 ? streamingNote(skipped) : null);
-    setImportGuide({ platform: 'rekordbox-xml', matched, total: setlist.tracks.length });
+    setImportGuide({ platform: 'rekordbox-xml', matched, total: setlist.tracks.length, cues: withCues });
   };
 
   const handleExportM3u = async () => {
@@ -517,6 +522,8 @@ export function SetlistOutput() {
           </div>
         )}
 
+        {setlist && <CueExportToggle state={cueExport} source="setlist" />}
+
         {crateStatus && (
           <div style={{
             marginBottom: 20, padding: '12px 16px',
@@ -536,6 +543,7 @@ export function SetlistOutput() {
             matched={importGuide.matched}
             total={importGuide.total}
             kind="set"
+            cues={importGuide.cues}
             onDismiss={() => setImportGuide(null)}
           />
         )}
