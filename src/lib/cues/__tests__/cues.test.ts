@@ -139,8 +139,11 @@ describe('readSeratoMp3Cues (integration)', () => {
     expect(track.mp3?.sampleRate).toBe(44100);
   });
 
+  // MPEG1 Layer III, 128 kbps, 44.1 kHz, no padding → 417-byte frames.
+  const frame417 = () => Buffer.concat([Buffer.from([0xff, 0xfb, 0x90, 0x00]), Buffer.alloc(413)]);
+
   it('treats an untagged but valid MP3 as having no cues', async () => {
-    const audio = Buffer.concat([Buffer.from([0xff, 0xfb, 0x90, 0x00]), Buffer.alloc(200)]);
+    const audio = Buffer.concat([frame417(), frame417(), frame417()]);
     const { cues } = await readSeratoMp3Cues(bytesByteSource(new Uint8Array(audio)), 'plain.mp3');
     expect(cues.cues).toHaveLength(0);
   });
@@ -148,6 +151,13 @@ describe('readSeratoMp3Cues (integration)', () => {
   it('rejects a file that is not an MP3 at all', async () => {
     const junk = new Uint8Array(4096).map((_, i) => (i * 37 + 11) & 0x7f); // never forms an MPEG sync
     await expect(readSeratoMp3Cues(bytesByteSource(junk), 'junk.mp3')).rejects.toThrow(/Not a readable MP3/);
+  });
+
+  it('rejects random bytes even when they contain a stray frame header', async () => {
+    let x = 12345;
+    const noise = new Uint8Array(16384).map(() => { x = (x * 1103515245 + 12345) & 0x7fffffff; return x >> 16 & 0xff; });
+    noise.set([0xff, 0xfb, 0x90, 0x00], 100); // one plausible header, no second frame after it
+    await expect(readSeratoMp3Cues(bytesByteSource(noise), 'noise.mp3')).rejects.toThrow(/Not a readable MP3/);
   });
 
   it('rejects a file whose tag runs past the end (cut off)', async () => {

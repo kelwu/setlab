@@ -29,14 +29,33 @@ function formatFromName(filename: string): AudioFormat {
   return 'mp3';
 }
 
+/** True when the bytes start (within 8 KB) with two back-to-back MPEG audio
+ *  frames. One frame header can turn up by chance in random data; a second one
+ *  exactly a frame-length later almost never does. Used only to tell a real
+ *  untagged MP3 from a corrupt or mislabeled file — not for cue timing. */
+export function looksLikeMp3(bytes: Uint8Array): boolean {
+  let from = 0;
+  for (let tries = 0; tries < 64; tries++) {
+    const f = analyzeFirstFrame(bytes, from, 8192 - from);
+    if (!f) return false;
+    const o = f.frameOffset;
+    const padding = (bytes[o + 2] >> 1) & 1;
+    const len = Math.floor(((f.samplesPerFrame / 8) * f.bitrateKbps * 1000) / f.sampleRate) + padding;
+    const n = o + len;
+    if (len > 4 && n + 1 < bytes.length && bytes[n] === 0xff && (bytes[n + 1] & 0xe0) === 0xe0) return true;
+    from = o + 1;
+    if (from >= 8192) return false;
+  }
+  return false;
+}
+
 export async function readSeratoMp3Cues(src: ByteSource, filename: string): Promise<SeratoReadResult> {
   const format = formatFromName(filename);
   const id3 = await readId3(src);
   if (!id3) {
     // No tag means no Serato cues — but make sure it's really an MP3, so a
     // corrupt or mislabeled file shows as unreadable instead of "no cues".
-    const head = analyzeFirstFrame(await src.read(0, Math.min(src.size, 8192)));
-    if (!head) throw new Error('Not a readable MP3 file.');
+    if (!looksLikeMp3(await src.read(0, Math.min(src.size, 16384)))) throw new Error('Not a readable MP3 file.');
     return { cues: { sourceApp: 'serato', format, cues: [], trackColor: null }, frame: null, durationMs: 0 };
   }
   // A tag that claims to run past the end of the file means the file is cut
