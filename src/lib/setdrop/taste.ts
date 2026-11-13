@@ -1,7 +1,7 @@
 // Per-DJ taste learning — closes the post-gig feedback loop.
 //
 // After each gig, `POST /api/gigs/[id]/reflect` stores a planned-vs-actual `diff[]`
-// in `gig_history.reflection_json`. That data is the DJ's real behaviour: which
+// in `gig_history.reflection_json`. That data is the DJ's real behavior: which
 // suggested tracks they keep dropping, and which tracks they always reach for that
 // we never suggested. This module aggregates those diffs across a DJ's recent gigs
 // into a bounded affinity map that re-ranks the candidate pool in
@@ -33,7 +33,7 @@ export interface TasteAffinity {
 
 const TRACK_BOUND = 3;
 const ARTIST_BOUND = 1.5;
-const MIN_GIGS_TO_QUALIFY = 2; // a track must show the same behaviour in ≥2 gigs to earn a strong score
+const MIN_GIGS_TO_QUALIFY = 2; // a track must show the same behavior in ≥2 gigs to earn a strong score
 
 // Per-event weights. `added` (a track the DJ played that we never suggested) is the
 // strongest positive — it's their go-to we keep missing. `matched` is a mild
@@ -137,7 +137,7 @@ export function computeAffinity(diffs: DiffEntry[][]): TasteAffinity {
   const droppedOften: TasteAffinity['droppedOften'] = [];
 
   for (const [k, agg] of tracks) {
-    // A track only earns a meaningful score once its dominant behaviour repeats across
+    // A track only earns a meaningful score once its dominant behavior repeats across
     // ≥2 gigs; otherwise damp it hard so one-off swaps barely move the needle.
     const corroboration = Math.max(agg.posGigs.size, agg.negGigs.size);
     const corroborationFactor = corroboration >= MIN_GIGS_TO_QUALIFY ? 1 : 0.25;

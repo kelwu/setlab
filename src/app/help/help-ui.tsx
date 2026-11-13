@@ -30,7 +30,7 @@ export function HelpTopBar({ back = '/help', backLabel = '← All guides' }: { b
 }
 
 /** Renders the screenshot for a step. Until a real asset exists it shows a
- *  labelled placeholder describing exactly what image belongs there. */
+ *  labeled placeholder describing exactly what image belongs there. */
 export function StepImage({ image }: { image: HelpImage }) {
   const ready = image.src && !image.pending;
 

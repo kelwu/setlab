@@ -170,7 +170,7 @@ body::after {
 .sd-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .sd-no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* Sticky on desktop, static on mobile — prevents weird stick-while-stacked behaviour */
+/* Sticky on desktop, static on mobile — prevents weird stick-while-stacked behavior */
 .sd-sticky-on-desktop { position: sticky; top: 72px; }
 
 @media (max-width: 768px) {

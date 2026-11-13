@@ -197,7 +197,7 @@ function filterTracks(raw: RawTrack[], profile: CrateProfile, extra: ExtraFilter
 // candidates that share the gig genre's SUPER-FAMILY (or match its exact/family
 // token), ranked by genre relevance then BPM fit, from a slightly widened BPM
 // window. The super-family gate is the important one: genreRelevance() scores a
-// genre it doesn't recognise (Rock, Country → 'other') as a soft "adjacent", so a
+// genre it doesn't recognize (Rock, Country → 'other') as a soft "adjacent", so a
 // score-only gate would pad a house crate with Bon Jovi. Requiring the same KNOWN
 // super-family keeps fills genre-true — the DJ stays in control of "close enough".
 function fillToTarget(
@@ -352,7 +352,7 @@ export async function POST(req: NextRequest) {
 
     if (!rawTracks?.length) return NextResponse.json({ error: 'Library is empty' }, { status: 404 });
 
-    // Summarise available genres for Claude context
+    // Summarize available genres for Claude context
     const genreCounts: Record<string, number> = {};
     for (const t of rawTracks) {
       const g = (t.genre ?? 'Unknown').trim();

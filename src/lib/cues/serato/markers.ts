@@ -1,14 +1,14 @@
 // Parse the legacy `Serato Markers_` block.
 //
 // Why we still read it (plan §2): for cues 0-4 the legacy block overrides
-// position, colour and type, and — crucially — a cue that is present in
+// position, color and type, and — crucially — a cue that is present in
 // Markers2 but *unset* here counts as DELETED. Without this, a cue the DJ
 // removed in Serato would reappear in the export and throw off the Phase 0
 // offset measurement. Names always come from Markers2.
 //
 // Layout (plan §2): header `02 05`, u32 BE count (14), then 14 × 22-byte entries
-// (5 cues, then 9 loops), then a trailing serato32 track colour. Positions and
-// colours are serato32-encoded (24 bits packed into four 7-bit bytes).
+// (5 cues, then 9 loops), then a trailing serato32 track color. Positions and
+// colors are serato32-encoded (24 bits packed into four 7-bit bytes).
 //
 // On MP3 the block is sometimes base64-wrapped and sometimes raw, so we detect
 // the `02 05` header directly and fall back to a base64 decode.

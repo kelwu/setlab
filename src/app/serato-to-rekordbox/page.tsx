@@ -9,7 +9,7 @@ import { BRAND } from '@/lib/brand';
 const URL_PATH = '/serato-to-rekordbox';
 const TITLE = 'Convert Serato to Rekordbox — Free, With Hot Cues';
 const DESCRIPTION =
-  'Move your Serato DJ library to Rekordbox free, in your browser: tracks, hot cues, saved loops, colours, '
+  'Move your Serato DJ library to Rekordbox in your browser: tracks, hot cues, saved loops, colors, '
   + 'comments and crates as playlists. Cue timing corrected for MP3s. Your music never leaves your computer.';
 
 export const metadata: Metadata = {
@@ -34,16 +34,16 @@ const S = {
 
 const MOVES = [
   ['Every track', 'with title, artist, genre, year, BPM and key'],
-  ['Hot cues', 'all eight pads, with their names and colours'],
+  ['Hot cues', 'all eight pads, with their names and colors'],
   ['Saved loops', 'as memory loops, so no hot cue is ever displaced (or as hot cues, if you prefer)'],
-  ['Track colours', 'matched to the nearest Rekordbox colour'],
+  ['Track colors', 'matched to the nearest Rekordbox color'],
   ['Comments', 'exactly as you wrote them in Serato'],
   ['Crates', 'as playlists, sub-crates as folders, in one “Serato (SetLab)” folder'],
 ];
 
 const NOT_YET = [
   'Cues on AIFF, M4A, FLAC and WAV files — those tracks move across without cues for now (MP3 cues move today).',
-  'Beatgrids — Rekordbox analyses each track itself.',
+  'Beatgrids — Rekordbox analyzes each track itself.',
   'Smart crates.',
 ];
 
@@ -55,9 +55,9 @@ const STEPS = [
 
 const FAQ: [string, string][] = [
   ['Is it really free?',
-    `Yes. Converting your library is free with a free ${BRAND.name} account — no trial, no card, no limit on library size.`],
+    `Yes. Converting is free with a ${BRAND.name} account — no trial, no card, no limit on library size.`],
   ['Does my music get uploaded?',
-    'No. Your audio never leaves your computer and SetLab never changes, moves or re-encodes your files. Your browser may describe picking a folder as an “upload”, but the files are only read locally. SetLab keeps just the cue details (positions, names, colours) so they can travel with your future SetLab exports.'],
+    'No. Your audio never leaves your computer and SetLab never changes, moves or re-encodes your files. Your browser may describe picking a folder as an “upload”, but the files are only read locally. SetLab keeps just the cue details (positions, names, colors) so they can travel with your future SetLab exports.'],
   ['Will my cues land in the right place?',
     'Serato and Rekordbox read the start of many MP3s differently, so a cue copied over as-is can land around 26 ms late — enough to clip a kick. SetLab checks how each MP3 was encoded and corrects the cue only where it’s needed. We measured this in Rekordbox 7 before shipping it.'],
   ['What happens to tracks already in Rekordbox?',
@@ -84,7 +84,7 @@ function H2({ children }: { children: React.ReactNode }) {
 
 const body = { fontFamily: S.body, fontSize: 16, color: S.textSec, lineHeight: 1.7, margin: 0 } as const;
 
-function Cta({ label = 'Convert my library — free' }: { label?: string }) {
+function Cta({ label = 'Convert my library' }: { label?: string }) {
   return (
     <Link href="/convert" style={{
       display: 'inline-block', background: S.accent, color: '#000', textDecoration: 'none',
@@ -129,19 +129,19 @@ export default function SeratoToRekordboxPage() {
       <main className="sd-pad-x" style={{ maxWidth: 880, margin: '0 auto', padding: '72px 40px 120px' }}>
         {/* Hero */}
         <section style={{ marginBottom: 88 }}>
-          <Eyebrow>Free Serato → Rekordbox converter</Eyebrow>
+          <Eyebrow>Serato → Rekordbox converter</Eyebrow>
           <h1 style={{ fontFamily: S.display, fontSize: 'clamp(44px,8vw,84px)', letterSpacing: 3,
             margin: '0 0 24px', lineHeight: 0.95 }}>
             Move your Serato library to Rekordbox — <span style={{ color: S.accent }}>hot cues and all</span>
           </h1>
           <p style={{ ...body, fontSize: 18, maxWidth: 640, marginBottom: 32 }}>
-            Tracks, hot cues, saved loops, colours, comments and crates, in one Rekordbox file. It runs in your
+            Tracks, hot cues, saved loops, colors, comments and crates, in one Rekordbox file. It runs in your
             browser, your music never leaves your computer, and your files are never changed.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
             <Cta />
             <span style={{ fontFamily: S.mono, fontSize: 12, color: S.textMuted }}>
-              Free account · no card · whole library
+              Free with a SetLab account · no card · whole library
             </span>
           </div>
         </section>

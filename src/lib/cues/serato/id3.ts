@@ -2,7 +2,7 @@
 //
 // We only need three things from the tag: the Serato GEOB frames (by their
 // description), the user COMM comment, and where the audio starts (so the first
-// MPEG frame can be analysed for the offset case). We read the header, then the
+// MPEG frame can be analyzed for the offset case). We read the header, then the
 // tag body, handle v2.3 vs v2.4 frame sizes and unsynchronisation, and skip
 // everything else (notably APIC artwork, which can be megabytes) by frame size.
 

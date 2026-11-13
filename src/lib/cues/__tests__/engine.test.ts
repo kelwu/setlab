@@ -5,7 +5,7 @@ import { buildPickIndex, matchSeratoPath, matchLibrary, resolveAbsolutePath, gue
 import { convertSeratoLibrary, CONVERT_FOLDER_NAME } from '../convert';
 import { sanitizeTrackCues, MAX_CUES_PER_TRACK, MAX_NAME_LEN } from '../validate';
 import { escapeXmlAttr } from '../rekordbox-marks';
-import { analyseFirstFrame, mp3DurationMs } from '../serato/mpeg-header';
+import { analyzeFirstFrame, mp3DurationMs } from '../serato/mpeg-header';
 import type { ScannedFile } from '../scan';
 import type { TrackCues } from '../types';
 
@@ -196,14 +196,14 @@ describe('mp3DurationMs', () => {
     b.set(header, 0);
     b.set([0x58, 0x69, 0x6e, 0x67, 0, 0, 0, 1], 4 + 32); // "Xing", flags = frames
     b.set([0, 0, 0x1b, 0x6b], 4 + 32 + 8);               // 7019 frames
-    const f = analyseFirstFrame(b)!;
+    const f = analyzeFirstFrame(b)!;
     expect(f.xingFrames).toBe(7019);
     expect(mp3DurationMs(f, 0)).toBe(Math.round((7019 * 1152 * 1000) / 44100));
   });
   it('estimates CBR length from the bitrate without a Xing header', () => {
     const b = new Uint8Array(512);
     b.set(header, 0);
-    const f = analyseFirstFrame(b)!;
+    const f = analyzeFirstFrame(b)!;
     expect(f.bitrateKbps).toBe(128);
     expect(mp3DurationMs(f, 16_000 * 180)).toBe(180_000); // 128 kbps = 16,000 B/s
   });

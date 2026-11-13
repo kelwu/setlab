@@ -1,13 +1,13 @@
 // Read one Serato MP3's cues into the neutral TrackCues model.
 //
 // Pulls the Serato GEOB blocks and comment from the ID3 tag, merges the modern
-// and legacy cue data, and analyses the first MPEG frame for the offset case.
+// and legacy cue data, and analyzes the first MPEG frame for the offset case.
 // v1 is MP3 only (plan §7a decision 4); AIFF reuses this same ID3 path later.
 
 import { ByteSource } from '../bytes';
 import { AudioFormat, TrackCues } from '../types';
 import { readId3 } from './id3';
-import { analyseFirstFrame, FrameAnalysis, mp3DurationMs } from './mpeg-header';
+import { analyzeFirstFrame, FrameAnalysis, mp3DurationMs } from './mpeg-header';
 import { parseSeratoMarkers2 } from './markers2';
 import { parseSeratoMarkers_ } from './markers';
 import { mergeSeratoCues } from './merge';
@@ -29,12 +29,38 @@ function formatFromName(filename: string): AudioFormat {
   return 'mp3';
 }
 
+/** True when the bytes start (within 8 KB) with two back-to-back MPEG audio
+ *  frames. One frame header can turn up by chance in random data; a second one
+ *  exactly a frame-length later almost never does. Used only to tell a real
+ *  untagged MP3 from a corrupt or mislabeled file — not for cue timing. */
+export function looksLikeMp3(bytes: Uint8Array): boolean {
+  let from = 0;
+  for (let tries = 0; tries < 64; tries++) {
+    const f = analyzeFirstFrame(bytes, from, 8192 - from);
+    if (!f) return false;
+    const o = f.frameOffset;
+    const padding = (bytes[o + 2] >> 1) & 1;
+    const len = Math.floor(((f.samplesPerFrame / 8) * f.bitrateKbps * 1000) / f.sampleRate) + padding;
+    const n = o + len;
+    if (len > 4 && n + 1 < bytes.length && bytes[n] === 0xff && (bytes[n + 1] & 0xe0) === 0xe0) return true;
+    from = o + 1;
+    if (from >= 8192) return false;
+  }
+  return false;
+}
+
 export async function readSeratoMp3Cues(src: ByteSource, filename: string): Promise<SeratoReadResult> {
   const format = formatFromName(filename);
   const id3 = await readId3(src);
   if (!id3) {
+    // No tag means no Serato cues — but make sure it's really an MP3, so a
+    // corrupt or mislabeled file shows as unreadable instead of "no cues".
+    if (!looksLikeMp3(await src.read(0, Math.min(src.size, 16384)))) throw new Error('Not a readable MP3 file.');
     return { cues: { sourceApp: 'serato', format, cues: [], trackColor: null }, frame: null, durationMs: 0 };
   }
+  // A tag that claims to run past the end of the file means the file is cut
+  // off (an interrupted download or copy). Its cue data can't be trusted.
+  if (id3.audioStart > src.size) throw new Error('This file looks cut off — it may not have finished downloading or copying.');
 
   const m2raw = id3.geobs.get('Serato Markers2');
   const mLegRaw = id3.geobs.get('Serato Markers_');
@@ -44,7 +70,7 @@ export async function readSeratoMp3Cues(src: ByteSource, filename: string): Prom
 
   const windowEnd = Math.min(src.size, id3.audioStart + 8192);
   const frame = id3.audioStart < src.size
-    ? analyseFirstFrame(await src.read(id3.audioStart, windowEnd))
+    ? analyzeFirstFrame(await src.read(id3.audioStart, windowEnd))
     : null;
 
   const trackCues: TrackCues = {

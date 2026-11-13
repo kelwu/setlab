@@ -4,7 +4,7 @@
 // product changes.
 
 export interface HelpImage {
-  /** Asset under /public/help/. When absent (or `pending`), a labelled
+  /** Asset under /public/help/. When absent (or `pending`), a labeled
    *  placeholder box is shown instead so it's obvious what screenshot goes
    *  here — drop the file in and set `src` to swap it in. */
   src?: string;

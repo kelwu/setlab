@@ -82,7 +82,7 @@ export default function PrivacyPage() {
           library, uses AI (Claude by Anthropic) to generate a sequenced set based on your gig context,
           and exports the result as a Serato <code style={{ color: S.accent }}>.crate</code>, a Rekordbox
           XML file, or an M3U playlist. It also converts a Serato library — tracks, hot cues, loops,
-          colours and crates — into a Rekordbox XML file.
+          colors and crates — into a Rekordbox XML file.
         </P>
         <P>
           {BRAND.name} is operated by Kel Wu, an individual developer. Contact:{' '}
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
         <P>So your cues can travel with later {BRAND.name} exports, we store, per music file:</P>
         <UL items={[
           'The file path (as stored by Serato)',
-          'Hot cue and saved loop positions, names and colours, and the track colour',
+          'Hot cue and saved loop positions, names and colors, and the track color',
           'The comment tag text, if the file has one',
           'Technical details needed to place cues correctly: MP3 encoder timing information, sample rate, duration and file size',
           'A change marker (file size and last-modified time) so unchanged files can be skipped next time',

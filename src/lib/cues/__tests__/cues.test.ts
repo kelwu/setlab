@@ -138,6 +138,33 @@ describe('readSeratoMp3Cues (integration)', () => {
     expect(analysis?.timingCase).toBe('A');
     expect(track.mp3?.sampleRate).toBe(44100);
   });
+
+  // MPEG1 Layer III, 128 kbps, 44.1 kHz, no padding → 417-byte frames.
+  const frame417 = () => Buffer.concat([Buffer.from([0xff, 0xfb, 0x90, 0x00]), Buffer.alloc(413)]);
+
+  it('treats an untagged but valid MP3 as having no cues', async () => {
+    const audio = Buffer.concat([frame417(), frame417(), frame417()]);
+    const { cues } = await readSeratoMp3Cues(bytesByteSource(new Uint8Array(audio)), 'plain.mp3');
+    expect(cues.cues).toHaveLength(0);
+  });
+
+  it('rejects a file that is not an MP3 at all', async () => {
+    const junk = new Uint8Array(4096).map((_, i) => (i * 37 + 11) & 0x7f); // never forms an MPEG sync
+    await expect(readSeratoMp3Cues(bytesByteSource(junk), 'junk.mp3')).rejects.toThrow(/Not a readable MP3/);
+  });
+
+  it('rejects random bytes even when they contain a stray frame header', async () => {
+    let x = 12345;
+    const noise = new Uint8Array(16384).map(() => { x = (x * 1103515245 + 12345) & 0x7fffffff; return x >> 16 & 0xff; });
+    noise.set([0xff, 0xfb, 0x90, 0x00], 100); // one plausible header, no second frame after it
+    await expect(readSeratoMp3Cues(bytesByteSource(noise), 'noise.mp3')).rejects.toThrow(/Not a readable MP3/);
+  });
+
+  it('rejects a file whose tag runs past the end (cut off)', async () => {
+    const header = Buffer.concat([Buffer.from('ID3', 'latin1'), Buffer.from([0x03, 0x00, 0x00]), synchsafe(100_000)]);
+    const cut = Buffer.concat([header, Buffer.alloc(1500 - header.length)]);
+    await expect(readSeratoMp3Cues(bytesByteSource(new Uint8Array(cut)), 'cut.mp3')).rejects.toThrow(/cut off/);
+  });
 });
 
 describe('colors', () => {
@@ -145,7 +172,7 @@ describe('colors', () => {
     expect(rgbToHex({ r: 0xc0, g: 0x26, b: 0x26 })).toBe('C02626');
     expect(hexToRgb('#E62828')).toEqual({ r: 0xe6, g: 0x28, b: 0x28 });
   });
-  it('finds the nearest palette colour', () => {
+  it('finds the nearest palette color', () => {
     const palette = [{ r: 230, g: 40, b: 40 }, { r: 40, g: 226, b: 20 }];
     expect(nearestInPalette({ r: 200, g: 20, b: 20 }, palette)).toEqual(palette[0]);
   });

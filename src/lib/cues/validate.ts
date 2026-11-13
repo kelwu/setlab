@@ -59,6 +59,6 @@ export function sanitizeTrackCues(v: unknown): TrackCues | null {
   const comment = str(v.comment, MAX_COMMENT_LEN);
   if (comment) out.comment = comment;
   if (v.bpmLocked === true) out.bpmLocked = true;
-  // beatgrid deliberately dropped: not exported in v1 (Rekordbox re-analyses).
+  // beatgrid deliberately dropped: not exported in v1 (Rekordbox re-analyzes).
   return out;
 }

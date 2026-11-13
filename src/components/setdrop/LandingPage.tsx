@@ -407,7 +407,7 @@ export function LandingPage() {
         <div style={{ maxWidth:1000, margin:'0 auto' }}>
           <ScrollFade style={{ textAlign:'center', marginBottom:56 }}>
             <div style={{ fontFamily:SD.mono, fontSize:12, letterSpacing:3, color:SD.accent,
-              textTransform:'uppercase', marginBottom:12 }}>New · Free for every DJ</div>
+              textTransform:'uppercase', marginBottom:12 }}>New</div>
             <h2 style={{ fontFamily:SD.display, fontSize:'clamp(40px,5vw,72px)', letterSpacing:4,
               margin:'0 0 24px', color:SD.text, lineHeight:1 }}>
               SERATO → REKORDBOX<br/><span style={{ color:SD.accent }}>HOT CUES INCLUDED</span>
@@ -415,7 +415,7 @@ export function LandingPage() {
             <p style={{ fontFamily:SD.body, fontSize:16, color:SD.textSec, lineHeight:1.8,
               maxWidth:620, margin:'0 auto' }}>
               Move your whole Serato library to Rekordbox in one file: tracks, hot cues with their names and
-              colours, saved loops, track colours, comments, and your crates as playlists. It runs in your
+              colors, saved loops, track colors, comments, and your crates as playlists. It runs in your
               browser — your music never leaves your computer and nothing is changed.
             </p>
           </ScrollFade>
@@ -424,7 +424,7 @@ export function LandingPage() {
             border:`1px solid ${SD.border}`, background:SD.border }}>
             {([
               ['Cues on the beat', 'Serato and Rekordbox read MP3 timing about 26 ms apart. SetLab corrects it per file, so cues land where you set them.'],
-              ['Whole library, free', 'No trial and no export limit. Convert everything, or pick just the crates you need.'],
+              ['Your whole library', 'Included with every account, Free plan too: no trial and no size limit. Convert everything, or pick just the crates you need.'],
               ['Pro: cues ride along', 'Once converted, your hot cues travel inside every Rekordbox XML export of the sets and crates you build in SetLab.'],
             ] as [string, string][]).map(([t, d], i) => (
               <ScrollFade key={t} delay={i * 70} style={{ padding:'32px 28px', background:SD.bg }}>
@@ -448,7 +448,7 @@ export function LandingPage() {
 
           <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap', marginTop:40 }}>
             <SDButton href="/login?mode=signup&redirect=/convert" style={{ fontSize:13, padding:'14px 32px' }}>
-              Convert My Library — Free
+              Convert My Library
             </SDButton>
             <SDButton ghost href="/serato-to-rekordbox" style={{ fontSize:13, padding:'14px 32px' }}>
               How It Works

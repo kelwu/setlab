@@ -12,7 +12,7 @@ import { convertSeratoToRekordbox } from '@/lib/cues/offset';
 import { rgbToHex } from '@/lib/cues/colors';
 import type { CuePoint } from '@/lib/cues/types';
 
-export type RowStatus = 'cues' | 'no-cues' | 'not-found' | 'unsupported' | 'streaming' | 'error';
+export type RowStatus = 'cues' | 'no-cues' | 'not-found' | 'not-scanned' | 'unsupported' | 'streaming' | 'error';
 
 export interface ReviewRow {
   path: string;
@@ -28,6 +28,7 @@ const FILTERS: { id: 'all' | RowStatus; label: string }[] = [
   { id: 'cues', label: 'With cues' },
   { id: 'no-cues', label: 'No cues' },
   { id: 'not-found', label: 'Not found' },
+  { id: 'not-scanned', label: 'Not scanned' },
   { id: 'unsupported', label: 'No cue support' },
   { id: 'streaming', label: 'Streaming' },
   { id: 'error', label: 'Unreadable' },
@@ -37,6 +38,7 @@ const STATUS_NOTE: Record<RowStatus, string> = {
   cues: '',
   'no-cues': 'No Serato cues',
   'not-found': 'Not in this folder',
+  'not-scanned': 'Scan stopped before this track — moves without cues',
   unsupported: 'Moves without cues (MP3 only for now)',
   streaming: 'Streaming — stays in Serato',
   error: 'Couldn’t read this file',
@@ -146,7 +148,13 @@ function Row({ row, top, included, onToggle, player }: {
           {row.title}
         </div>
         <div style={{ fontFamily: SD.mono, fontSize: SD.t11, color: SD.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {row.artist}{STATUS_NOTE[row.status] && <span style={{ color: row.status === 'error' ? SD.danger : SD.textMuted }}>{row.artist ? ' · ' : ''}{STATUS_NOTE[row.status]}</span>}
+          {row.artist}{STATUS_NOTE[row.status] && (
+            <span style={{ color: row.status === 'error' ? SD.danger : SD.textMuted }}
+              title={row.status === 'error' ? row.scan?.error : undefined}>
+              {row.artist ? ' · ' : ''}
+              {row.status === 'error' && row.scan?.error ? `Couldn’t read: ${row.scan.error}` : STATUS_NOTE[row.status]}
+            </span>
+          )}
         </div>
       </div>
       {row.status === 'cues' && (

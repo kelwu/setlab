@@ -323,7 +323,7 @@ const EMERGING_TOOL: Anthropic.Tool = {
 
 const GAP_SYSTEM = `You are a DJ library gap analyst. You receive a list of BPM/genre gaps in a DJ's library.
 
-For each gap, recommend 3 specific real tracks that would fill it — tracks a professional DJ would know and that are available on Beatport or DJcity. Use your knowledge of well-regarded tracks in the genre and BPM range. Prioritise tracks released in the last 3 years but include classics if they best fit the range.
+For each gap, recommend 3 specific real tracks that would fill it — tracks a professional DJ would know and that are available on Beatport or DJcity. Use your knowledge of well-regarded tracks in the genre and BPM range. Prioritize tracks released in the last 3 years but include classics if they best fit the range.
 
 Genre guidance:
 - House / Tech House / Afro House → well-known house records in the BPM range
@@ -338,7 +338,7 @@ Genre guidance:
 Call report_library_gaps with all gaps filled in. Include 3 recommendations per gap.
 For beatportSearchUrl use: https://www.beatport.com/search?q=ARTIST+TITLE (URL-encode, replace spaces with +).`;
 
-const EMERGING_SYSTEM = `You are a DJ trend scout. Find emerging artists gaining momentum in DJ circles — breakthrough acts, rising artists getting chart placements, new names earning support from established DJs. Prioritise artists who have released in the last 12 months and are gaining traction.`;
+const EMERGING_SYSTEM = `You are a DJ trend scout. Find emerging artists gaining momentum in DJ circles — breakthrough acts, rising artists getting chart placements, new names earning support from established DJs. Prioritize artists who have released in the last 12 months and are gaining traction.`;
 
 // ─── AI fetch functions ───────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@ import { matchStoredCues, CueLookupRequest, StoredCueRow } from '@/lib/cues/look
 import { userHasCueExport } from '@/lib/cues/entitlement';
 
 // POST /api/cues/lookup — the stored hot cues for the tracks of a set/crate
-// export, so they can be written into the Rekordbox XML. Cues travelling with
+// export, so they can be written into the Rekordbox XML. Cues traveling with
 // SetLab exports are a Pro feature; this route is where that's enforced (the
 // XML itself is built client-side). Free users get only a count, which the UI
 // uses for the upgrade prompt. RLS scopes every read to the caller's library.
