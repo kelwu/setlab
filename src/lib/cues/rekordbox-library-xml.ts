@@ -5,7 +5,6 @@
 // track whose TotalTime is "0", so every track carries its real length, size,
 // kind and sample rate when known.
 
-import { toRekordboxLocation } from '@/lib/setdrop/rekordbox-export';
 import { CuePoint, Rgb } from './types';
 import { cuesToPositionMarks, escapeXmlAttr as esc, MarkOptions } from './rekordbox-marks';
 import { nearestInPalette, rgbToHex } from './colors';
@@ -56,6 +55,37 @@ function trackColourAttr(c: Rgb | null | undefined): string {
   const hex = rgbToHex(c);
   if (hex === 'FFFFFF' || hex === '000000') return '';
   return ` Colour="0x${rgbToHex(nearestInPalette(c, RB_TRACK_COLOURS))}"`;
+}
+
+export function toRekordboxLocation(filePath: string): string {
+  let path = filePath.trim();
+  // Strip existing file:// prefix (with optional localhost) so we can re-encode cleanly
+  if (path.startsWith('file://')) {
+    path = decodeURIComponent(path.replace(/^file:\/\/(localhost)?/, ''));
+  }
+  // Windows absolute path: C:\... or C:/... → /C:/...
+  if (/^[A-Za-z]:[/\\]/.test(path)) {
+    path = '/' + path.replace(/\\/g, '/');
+  }
+  // Ensure leading slash
+  if (!path.startsWith('/')) path = '/' + path;
+  // Encode every segment — handles #, %, &, spaces, parens, apostrophes, etc. — but
+  // keep a Windows drive letter's colon literal: encodeURIComponent turns "C:" into
+  // "C%3A", which Rekordbox can't resolve back to a real file path.
+  const encoded = path.split('/')
+    .map(seg => (seg === '' ? '' : /^[A-Za-z]:$/.test(seg) ? seg : encodeURIComponent(seg)))
+    .join('/');
+  return 'file://localhost' + encoded;
+}
+
+const KIND_BY_EXT: Record<string, string> = {
+  mp3: 'MP3 File', m4a: 'M4A File', mp4: 'M4A File', aac: 'AAC File',
+  wav: 'WAV File', aif: 'AIFF File', aiff: 'AIFF File', flac: 'FLAC File',
+};
+
+/** Rekordbox's Kind label for a file, from its extension. */
+export function kindForPath(path: string): string | undefined {
+  return KIND_BY_EXT[path.split('?')[0].split('.').pop()?.toLowerCase() ?? ''];
 }
 
 function attr(name: string, v: string | number | undefined | null): string {

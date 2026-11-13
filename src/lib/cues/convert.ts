@@ -7,7 +7,7 @@ import { isLocalFilePath } from '@/lib/setdrop/file-path';
 import { CrateNode } from './serato/crate-reader';
 import { normalizeRelPath, resolveAbsolutePath } from './match';
 import { convertSeratoToRekordbox } from './offset';
-import { buildRekordboxLibraryXml, RbPlaylistNode, RbTrack } from './rekordbox-library-xml';
+import { buildRekordboxLibraryXml, kindForPath, RbPlaylistNode, RbTrack } from './rekordbox-library-xml';
 import { MarkOptions } from './rekordbox-marks';
 import { ScannedFile } from './scan';
 
@@ -37,15 +37,6 @@ export interface ConvertStats {
   /** Streaming references (no local file) — left in Serato. */
   streaming: number;
   playlists: number;
-}
-
-const KIND_BY_EXT: Record<string, string> = {
-  mp3: 'MP3 File', m4a: 'M4A File', mp4: 'M4A File', aac: 'AAC File',
-  wav: 'WAV File', aif: 'AIFF File', aiff: 'AIFF File', flac: 'FLAC File',
-};
-
-function kindOf(path: string): string | undefined {
-  return KIND_BY_EXT[path.split('.').pop()?.toLowerCase() ?? ''];
 }
 
 export function convertSeratoLibrary(input: ConvertInput): { xml: string; stats: ConvertStats } {
@@ -78,7 +69,7 @@ export function convertSeratoLibrary(input: ConvertInput): { xml: string; stats:
       bpm: t.bpm || undefined,
       tonality: t.key || undefined,
       comment: tc?.comment,
-      kind: kindOf(path),
+      kind: kindForPath(path),
       sizeBytes: scan?.size,
       durationMs: scan?.durationMs || undefined,
       sampleRate: tc?.mp3?.sampleRate,

@@ -9,6 +9,7 @@ import { useMemo, useRef, useState } from 'react';
 import { SD } from '@/lib/setdrop/constants';
 import { SDButton, Card, PageHeader } from '../shared';
 import { downloadRekordboxXml } from '@/lib/setdrop/rekordbox-export';
+import { trackEvent } from '@/lib/analytics';
 import { isLocalFilePath } from '@/lib/setdrop/file-path';
 import { parseSeratoDatabase } from '@/lib/setdrop/serato-db-parser';
 import type { LibraryTrack } from '@/lib/agents/types';
@@ -116,6 +117,7 @@ export function ConvertWizard() {
       jobs.push({ file: lib.files[i], relPath: lib.files[i].webkitRelativePath || lib.files[i].name });
       pathForJob.push(p);
     }
+    trackEvent.cueConvertStarted(mode, jobs.length);
     try {
       const results = await scan(jobs);
       const byRel = new Map(results.map(r => [r.relPath, r]));
@@ -123,9 +125,13 @@ export function ConvertWizard() {
       jobs.forEach((j, k) => { const r = byRel.get(j.relPath); if (r) next.set(pathForJob[k], r); });
       setScans(next);
       setExcluded(new Set());
+      const withCues = [...next.values()].filter(r => r.status === 'ok' && r.cues?.cues.length);
+      trackEvent.cueScanCompleted(next.size, withCues.length,
+        withCues.reduce((n, r) => n + (r.cues?.cues.length ?? 0), 0));
       setStep('review');
       saveCues(lib.dbTracks, next); // fire-and-forget
     } catch (e) {
+      trackEvent.cueScanFailed(e instanceof Error && /cancel/i.test(e.message) ? 'cancelled' : 'error');
       setError(e instanceof Error ? e.message : 'Scan failed.');
       setStep('select');
     }
@@ -177,6 +183,7 @@ export function ConvertWizard() {
       markOpts: { loopsAsHotcue, duplicateHotCuesAsMemory: dupMemory },
     });
     downloadRekordboxXml(xml, 'SetLab Serato to Rekordbox');
+    trackEvent.cueConvertDownloaded(stats.tracks, stats.tracksWithCues, stats.playlists);
     setResult(stats);
     setStep('done');
   };

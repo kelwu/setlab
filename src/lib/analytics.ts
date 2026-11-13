@@ -77,6 +77,23 @@ export const trackEvent = {
     track('export_blocked', { source });
   },
 
+  // — Serato → Rekordbox converter (/convert) and cues in exports —
+  cueConvertStarted(mode: 'library' | 'crates', tracks: number) {
+    track('cue_convert_started', { mode, tracks });
+  },
+  cueScanCompleted(tracks: number, tracksWithCues: number, cues: number) {
+    track('cue_scan_completed', { tracks, tracks_with_cues: tracksWithCues, cues });
+  },
+  cueScanFailed(reason: string) {
+    track('cue_scan_failed', { reason });
+  },
+  cueConvertDownloaded(tracks: number, tracksWithCues: number, playlists: number) {
+    track('cue_convert_downloaded', { tracks, tracks_with_cues: tracksWithCues, playlists });
+  },
+  cueExportCompleted(source: 'setlist' | 'crate', tracks: number, tracksWithCues: number) {
+    track('cue_export_completed', { source, tracks, tracks_with_cues: tracksWithCues });
+  },
+
   // — Upgrade funnel —
   upgradeClicked(source: string) {
     track('upgrade_clicked', { source });

@@ -11,11 +11,13 @@ import {
   buildM3u,
   downloadRekordboxXml,
   downloadM3u,
+  matchExportTracks,
 } from '@/lib/setdrop/rekordbox-export';
 import type { SetlistTrack, LibraryTrack } from '@/lib/agents/types';
 import type { CrateTrack } from '@/lib/crates/types';
 import { gateExport } from '@/lib/setdrop/export-gate';
 import { trackEvent } from '@/lib/analytics';
+import { CueExportToggle, useCueExport } from './cues/CueExportToggle';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -129,7 +131,8 @@ export function CrateBuilder() {
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [importGuide, setImportGuide] = useState<{ platform: ImportPlatform; matched: number; total: number } | null>(null);
+  const [importGuide, setImportGuide] = useState<{ platform: ImportPlatform; matched: number; total: number; cues?: number } | null>(null);
+  const cueExport = useCueExport();
   const [warning, setWarning] = useState<string | null>(null);
   const [activeCrate, setActiveCrate] = useState<ActiveCrate | null>(null);
   const [savedCrates, setSavedCrates] = useState<SavedCrate[]>([]);
@@ -261,13 +264,15 @@ export function CrateBuilder() {
     if (!activeCrate) return;
     const setlist = activeCrate.tracks.map(toSetlistTrack);
     const library = activeCrate.tracks.map(toLibraryTrack);
-    const { xml, matched } = buildRekordboxXml(activeCrate.name, setlist, library);
+    const cues = await cueExport.lookup(matchExportTracks(setlist, library));
+    const { xml, matched, withCues } = buildRekordboxXml(activeCrate.name, setlist, library, { cues });
     if (!matched) { setError('No file paths — library may need re-sync'); return; }
     const gate = await gateExport('crate', activeCrate.id, 'rekordbox-xml');
     if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
     downloadRekordboxXml(xml, activeCrate.name);
+    if (cues) trackEvent.cueExportCompleted('crate', matched, withCues);
     setError(null);
-    setImportGuide({ platform: 'rekordbox-xml', matched, total: activeCrate.tracks.length });
+    setImportGuide({ platform: 'rekordbox-xml', matched, total: activeCrate.tracks.length, cues: withCues });
   };
 
   const handleExportM3u = async () => {
@@ -605,6 +610,8 @@ export function CrateBuilder() {
             </div>
           </div>
 
+          <CueExportToggle state={cueExport} source="crate" />
+
           {importGuide && (
             <ImportInstructions
               platform={importGuide.platform}
@@ -612,6 +619,7 @@ export function CrateBuilder() {
               matched={importGuide.matched}
               total={importGuide.total}
               kind="crate"
+              cues={importGuide.cues}
               onDismiss={() => setImportGuide(null)}
             />
           )}
