@@ -89,12 +89,33 @@ export async function POST(req: NextRequest) {
   while (priorTurns.length && priorTurns[0].role === 'assistant') priorTurns.shift();
   const convo: ChatTurn[] = [...priorTurns, { role: 'user', content: message.trim() }];
 
+  // Tell the bot where this DJ is (signed in? library imported?) so a "how do I
+  // make a set" answer starts with importing when they haven't yet. Best-effort:
+  // a failed lookup just leaves the context out.
+  let userContext = 'USER CONTEXT: not signed in.';
+  if (user) {
+    try {
+      const [{ data: lib }, { data: profile }] = await Promise.all([
+        admin.from('serato_libraries').select('total_tracks, source').eq('user_id', user.id).limit(1).maybeSingle(),
+        admin.from('users').select('subscription_tier, is_beta').eq('id', user.id).maybeSingle(),
+      ]);
+      const plan = profile?.subscription_tier === 'pro' || profile?.is_beta ? 'Pro' : 'Free';
+      const library = lib
+        ? `library imported (${lib.total_tracks ?? 'unknown'} tracks, from ${lib.source === 'rekordbox' ? 'Rekordbox' : 'Serato'})`
+        : 'NO library imported yet';
+      userContext = `USER CONTEXT: signed in, ${plan} plan, ${library}.`;
+    } catch (err) {
+      console.error('[chat] user context lookup failed', err);
+      userContext = '';
+    }
+  }
+
   let stream: ReturnType<ReturnType<typeof getAnthropic>['messages']['stream']>;
   try {
     stream = getAnthropic().messages.stream({
       model: 'claude-haiku-4-5',
       max_tokens: 400,
-      system: SYSTEM_PROMPT,
+      system: userContext ? `${SYSTEM_PROMPT}\n\n${userContext}` : SYSTEM_PROMPT,
       messages: convo,
     }, { timeout: 25_000 });
   } catch (err) {
