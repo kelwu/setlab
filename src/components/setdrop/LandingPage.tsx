@@ -11,16 +11,19 @@ export function LandingPage() {
     { n:'03', label:'Bridge', desc:`${BRAND.name} checks Beatport, Traxsource, BPM Supreme, and DJcity to tell you where each track can be purchased.` },
     { n:'04', label:'Sync', desc:`Download and import to Serato or Rekordbox. ${BRAND.name} tracks what's in your library and what still needs to get there.` },
     { n:'05', label:'Build', desc:"Set the gig context — genre, crowd, energy arc, duration. AI architects the perfect set from your library." },
-    { n:'06', label:'Perform', desc:"Export your Serato crate or Rekordbox playlist. Hit the decks. Do not repeat." },
+    { n:'06', label:'Perform', desc:"Export as a Serato crate, a Rekordbox XML or an M3U — whichever your setup prefers. Hit the decks." },
   ];
 
   const FEATURES = [
-    { title:'Serato + Rekordbox Ready', desc:"Import from Serato DB or Rekordbox XML. Export your AI-built set back as a Serato crate or Rekordbox playlist — one click." },
-    { title:'Do-Not-Repeat Logic', desc:"Tracks played in previous sets are flagged. AI never pulls from tracks you've already used this month." },
+    { title:'Serato + Rekordbox Ready', desc:"Import from a Serato DB or Rekordbox XML. Export any set or crate as a Serato crate, a Rekordbox XML playlist, or an M3U." },
+    { title:'Crate Builder', desc:"Describe the crate — \"Friday peak 1am\", \"wedding cocktail hour\" — set BPM, year and clean-only filters, and it's pulled from your library." },
     { title:'Opener / Headliner Mode', desc:"Tell the AI your slot. Energy arc, track selection, and pacing adapt to your position on the lineup." },
+    { title:'30 Minutes to 4 Hours', desc:"From a short opener to a 4-hour open-format night, paced for the genre. Clean-only mode keeps weddings, radio and corporate gigs safe." },
     { title:'Genre-Specific Transition Rules', desc:"Afrobeats to House transitions follow different rules than Hip Hop to R&B. The AI knows." },
-    { title:'Serato Crate Export', desc:"One click. Your setlist becomes a Serato crate file, ready to load before you hit the booth." },
+    { title:'Do-Not-Repeat Logic', desc:"Tracks from your recent sets are steered out, so you don't play the same set twice." },
     { title:'Gig Intel Agent', desc:"Provide the venue name. AI researches the room, resident DJs, and crowd profile to shape the set." },
+    { title:'Wordplay', desc:"For hip-hop sets: pick a word and SetLab chains tracks whose lyrics bridge into each other." },
+    { title:'Track ID', desc:"Play a clip to name a track, or upload a full mix and get a timestamped tracklist back." },
   ];
 
   const DEMO_TRACKS = SAMPLE_TRACKS.slice(0, 5);
@@ -210,7 +213,7 @@ export function LandingPage() {
 
           <div style={{ marginTop:64, display:'flex', gap:48, justifyContent:'center', flexWrap:'wrap',
             animation:'sdFadeUp 0.6s 0.75s ease both' }}>
-            {([['2,400+','Tracks analyzed'],['98%','Key accuracy'],['< 30s','Set generation']] as [string,string][]).map(([n, l]) => (
+            {([['200K+','Tracks in DJ libraries'],['150+','Sets built'],['4 hrs','Longest set']] as [string,string][]).map(([n, l]) => (
               <div key={l} style={{ textAlign:'center' }}>
                 <div style={{ fontFamily:SD.display, fontSize:40, letterSpacing:2, color:SD.accent }}>{n}</div>
                 <div style={{ fontFamily:SD.body, fontSize:12, color:SD.textMuted,
@@ -396,6 +399,64 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ── Serato → Rekordbox converter ──────────────────────────────────── */}
+      <section id="serato-to-rekordbox" className="sd-pad-x" style={{
+        padding:'120px 40px', background:SD.surface,
+        borderTop:`1px solid ${SD.border}`, borderBottom:`1px solid ${SD.border}`,
+      }}>
+        <div style={{ maxWidth:1000, margin:'0 auto' }}>
+          <ScrollFade style={{ textAlign:'center', marginBottom:56 }}>
+            <div style={{ fontFamily:SD.mono, fontSize:12, letterSpacing:3, color:SD.accent,
+              textTransform:'uppercase', marginBottom:12 }}>New · Free for every DJ</div>
+            <h2 style={{ fontFamily:SD.display, fontSize:'clamp(40px,5vw,72px)', letterSpacing:4,
+              margin:'0 0 24px', color:SD.text, lineHeight:1 }}>
+              SERATO → REKORDBOX<br/><span style={{ color:SD.accent }}>HOT CUES INCLUDED</span>
+            </h2>
+            <p style={{ fontFamily:SD.body, fontSize:16, color:SD.textSec, lineHeight:1.8,
+              maxWidth:620, margin:'0 auto' }}>
+              Move your whole Serato library to Rekordbox in one file: tracks, hot cues with their names and
+              colours, saved loops, track colours, comments, and your crates as playlists. It runs in your
+              browser — your music never leaves your computer and nothing is changed.
+            </p>
+          </ScrollFade>
+
+          <div className="sd-grid-3" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:1,
+            border:`1px solid ${SD.border}`, background:SD.border }}>
+            {([
+              ['Cues on the beat', 'Serato and Rekordbox read MP3 timing about 26 ms apart. SetLab corrects it per file, so cues land where you set them.'],
+              ['Whole library, free', 'No trial and no export limit. Convert everything, or pick just the crates you need.'],
+              ['Pro: cues ride along', 'Once converted, your hot cues travel inside every Rekordbox XML export of the sets and crates you build in SetLab.'],
+            ] as [string, string][]).map(([t, d], i) => (
+              <ScrollFade key={t} delay={i * 70} style={{ padding:'32px 28px', background:SD.bg }}>
+                <div style={{ width:32, height:2, background:SD.accent, marginBottom:18 }}/>
+                <div style={{ fontFamily:SD.display, fontSize:22, letterSpacing:2, color:SD.text, marginBottom:10 }}>
+                  {t.toUpperCase()}
+                </div>
+                <div style={{ fontFamily:SD.body, fontSize:14, color:SD.textSec, lineHeight:1.75 }}>{d}</div>
+              </ScrollFade>
+            ))}
+          </div>
+
+          <ScrollFade style={{ marginTop:28, fontFamily:SD.body, fontSize:13, color:SD.textMuted,
+            lineHeight:1.8, maxWidth:720, marginLeft:'auto', marginRight:'auto', textAlign:'center' }}>
+            <strong style={{ color:SD.textSec }}>Prefer M3U?</strong> M3U files can&apos;t hold hot cues — they&apos;re
+            just a list of tracks. So import the converter&apos;s XML into Rekordbox once: that saves your Serato cues
+            to your Rekordbox collection. After that, export sets as M3U as usual. Rekordbox matches each track to the
+            one already in your collection, cues and all, as long as the files haven&apos;t moved. Hot cues are read
+            from MP3s for now; AIFF, M4A and FLAC tracks come across without cues.
+          </ScrollFade>
+
+          <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap', marginTop:40 }}>
+            <SDButton href="/login?mode=signup&redirect=/convert" style={{ fontSize:13, padding:'14px 32px' }}>
+              Convert My Library — Free
+            </SDButton>
+            <SDButton ghost href="/serato-to-rekordbox" style={{ fontSize:13, padding:'14px 32px' }}>
+              How It Works
+            </SDButton>
+          </div>
+        </div>
+      </section>
+
       {/* ── Features ──────────────────────────────────────────────────────── */}
       <section className="sd-pad-x" style={{ padding:'120px 40px', maxWidth:1200, margin:'0 auto' }}>
         <ScrollFade style={{ textAlign:'center', marginBottom:72 }}>
@@ -410,7 +471,7 @@ export function LandingPage() {
             <ScrollFade key={i} delay={i * 70} style={{
               padding:'36px 32px', background:SD.bg,
               borderRight: i%3!==2 ? `1px solid ${SD.border}` : 'none',
-              borderBottom: i<3 ? `1px solid ${SD.border}` : 'none',
+              borderBottom: i < FEATURES.length - 3 ? `1px solid ${SD.border}` : 'none',
             }}>
               <div style={{ width:32, height:2, background:SD.accent, marginBottom:20 }}/>
               <div style={{ fontFamily:SD.display, fontSize:22, letterSpacing:2,
@@ -454,9 +515,10 @@ export function LandingPage() {
               <ul style={{ listStyle:'none', padding:0, margin:'0 0 40px', display:'flex', flexDirection:'column', gap:14 }}>
                 {[
                   'Unlimited AI set & crate generation',
-                  '3 exports / month (Serato, Rekordbox, M3U)',
-                  'Full library upload (Serato DB / CSV)',
-                  'BPM & key enrichment',
+                  '3 exports / month — Serato crate, Rekordbox XML or M3U',
+                  'Serato → Rekordbox converter, hot cues included',
+                  'Library upload (Serato or Rekordbox) + BPM & key enrichment',
+                  '10 Track IDs / month',
                 ].map(f => (
                   <li key={f} style={{ display:'flex', alignItems:'flex-start', gap:12,
                     fontFamily:SD.body, fontSize:14, color:SD.textSec, lineHeight:1.5 }}>
@@ -498,11 +560,12 @@ export function LandingPage() {
 
               <ul style={{ listStyle:'none', padding:0, margin:'0 0 40px', display:'flex', flexDirection:'column', gap:14 }}>
                 {[
-                  'Unlimited exports — Serato, Rekordbox, M3U',
+                  'Unlimited exports — Serato crate, Rekordbox XML or M3U',
+                  'Hot cues inside your Rekordbox XML exports',
                   'Unlimited AI set & crate generation',
                   '500 Track IDs / month',
-                  'Full library upload (Serato DB / CSV)',
-                  'BPM & key enrichment',
+                  'Serato → Rekordbox converter, hot cues included',
+                  'Library upload (Serato or Rekordbox) + BPM & key enrichment',
                 ].map(f => (
                   <li key={f} style={{ display:'flex', alignItems:'flex-start', gap:12,
                     fontFamily:SD.body, fontSize:14, color:SD.textSec, lineHeight:1.5 }}>
