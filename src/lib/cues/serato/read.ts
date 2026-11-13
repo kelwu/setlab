@@ -33,8 +33,15 @@ export async function readSeratoMp3Cues(src: ByteSource, filename: string): Prom
   const format = formatFromName(filename);
   const id3 = await readId3(src);
   if (!id3) {
+    // No tag means no Serato cues — but make sure it's really an MP3, so a
+    // corrupt or mislabeled file shows as unreadable instead of "no cues".
+    const head = analyzeFirstFrame(await src.read(0, Math.min(src.size, 8192)));
+    if (!head) throw new Error('Not a readable MP3 file.');
     return { cues: { sourceApp: 'serato', format, cues: [], trackColor: null }, frame: null, durationMs: 0 };
   }
+  // A tag that claims to run past the end of the file means the file is cut
+  // off (an interrupted download or copy). Its cue data can't be trusted.
+  if (id3.audioStart > src.size) throw new Error('This file looks cut off — it may not have finished downloading or copying.');
 
   const m2raw = id3.geobs.get('Serato Markers2');
   const mLegRaw = id3.geobs.get('Serato Markers_');

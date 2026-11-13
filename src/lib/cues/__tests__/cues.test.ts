@@ -138,6 +138,23 @@ describe('readSeratoMp3Cues (integration)', () => {
     expect(analysis?.timingCase).toBe('A');
     expect(track.mp3?.sampleRate).toBe(44100);
   });
+
+  it('treats an untagged but valid MP3 as having no cues', async () => {
+    const audio = Buffer.concat([Buffer.from([0xff, 0xfb, 0x90, 0x00]), Buffer.alloc(200)]);
+    const { cues } = await readSeratoMp3Cues(bytesByteSource(new Uint8Array(audio)), 'plain.mp3');
+    expect(cues.cues).toHaveLength(0);
+  });
+
+  it('rejects a file that is not an MP3 at all', async () => {
+    const junk = new Uint8Array(4096).map((_, i) => (i * 37 + 11) & 0x7f); // never forms an MPEG sync
+    await expect(readSeratoMp3Cues(bytesByteSource(junk), 'junk.mp3')).rejects.toThrow(/Not a readable MP3/);
+  });
+
+  it('rejects a file whose tag runs past the end (cut off)', async () => {
+    const header = Buffer.concat([Buffer.from('ID3', 'latin1'), Buffer.from([0x03, 0x00, 0x00]), synchsafe(100_000)]);
+    const cut = Buffer.concat([header, Buffer.alloc(1500 - header.length)]);
+    await expect(readSeratoMp3Cues(bytesByteSource(new Uint8Array(cut)), 'cut.mp3')).rejects.toThrow(/cut off/);
+  });
 });
 
 describe('colors', () => {

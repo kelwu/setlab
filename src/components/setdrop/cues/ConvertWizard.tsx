@@ -102,6 +102,7 @@ export function ConvertWizard() {
     for (const c of allCrates) if (pickedCrates.has(c.id)) c.tracks.forEach(p => set.add(p));
     return [...set];
   }, [lib, mode, allCrates, pickedCrates]);
+  const scopeFound = useMemo(() => (lib ? scopePaths.filter(p => lib.fileFor.has(p)).length : 0), [lib, scopePaths]);
 
 
   // ── Step 2 → 3: scan ───────────────────────────────────────────────────────
@@ -147,7 +148,7 @@ export function ConvertWizard() {
       let status: RowStatus;
       if (!isLocalFilePath(p)) status = 'streaming';
       else if (!lib.fileFor.has(p)) status = 'not-found';
-      else if (!s) status = 'not-found';
+      else if (!s) status = 'not-scanned';
       else if (s.status === 'ok') status = 'cues';
       else if (s.status === 'no-cues') status = 'no-cues';
       else if (s.status === 'unsupported') status = 'unsupported';
@@ -272,8 +273,15 @@ export function ConvertWizard() {
 
             <div style={{ display: 'flex', gap: SD.s3, alignItems: 'center', marginTop: SD.s5, flexWrap: 'wrap' }}>
               <SDButton onClick={startScan} disabled={!scopePaths.length}>
-                Scan {scopePaths.length.toLocaleString()} tracks
+                {scopeFound === scopePaths.length
+                  ? `Scan ${scopePaths.length.toLocaleString()} tracks`
+                  : `Scan ${scopeFound.toLocaleString()} of ${scopePaths.length.toLocaleString()} tracks`}
               </SDButton>
+              {scopeFound < scopePaths.length && (
+                <span style={{ ...p, margin: 0, color: SD.textMuted }}>
+                  {(scopePaths.length - scopeFound).toLocaleString()} aren’t in this folder — they still move to Rekordbox, without cues.
+                </span>
+              )}
               <SDButton ghost small onClick={() => { setLib(null); setStep('pick'); }}>Choose another folder</SDButton>
             </div>
           </Card>
