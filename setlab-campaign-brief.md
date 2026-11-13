@@ -57,7 +57,7 @@ Lead with the **benefit**, support with the **feature**.
 - **Genre column** *(new)* — See each track's genre at a glance in the crate list.
 
 ### Export & platforms
-- **One-click export** — Serato `.crate`, Rekordbox XML, or M3U playlist.
+- **One-click export** — Serato `.crate`, Rekordbox XML, or M3U playlist. Both Rekordbox formats are first-class: some DJs prefer M3U. Only XML can carry hot cues — the M3U format has no field for them. For M3U users: import the converter XML into Rekordbox **once** (that writes the Serato cues into their collection); after that, M3U exports pick up those cues because Rekordbox matches each file to the collection track. Requires the files to stay at the same paths. Never claim M3U "carries" or "exports" cues.
 - **Works with your tools** — Serato DJ Pro, Rekordbox (import + export); Beatport, Traxsource, BPM Supreme, DJcity (purchase bridge — tells you where to buy tracks you don't own yet).
 
 ### Serato → Rekordbox converter *(new, free)*
@@ -198,7 +198,7 @@ The contact itself is created at signup (`source: 'setlab-signup'`).
 ## 9. Accuracy guardrails (don't overclaim)
 
 - SetLab is in **beta** — fine to say so; conveys "early, improving fast."
-- Landing-page stats ("2,400+ tracks analyzed", "98% key accuracy", "<30s set generation") are **existing marketing figures** — reuse them, don't invent new metrics.
+- Landing-page stats are **real figures as of 2026-11-12**: "200K+ tracks in DJ libraries" (205K in `serato_tracks`), "150+ sets built" (151), "4 hrs longest set" (max duration). The old "2,400+ tracks analyzed / 98% key accuracy / <30s set generation" figures were retired: unsourced. Don't invent new metrics; re-pull from the DB before updating.
 - It does **not** stream/host music or mix audio for you — it plans and exports; the DJ mixes.
 - Purchase bridge **links to** stores (Beatport/Traxsource/BPM Supreme/DJcity); it doesn't buy tracks for you.
 - Pricing is **$12/mo Pro**; Free is genuinely usable (unlimited generation, 3 exports/mo). Don't imply generation is paywalled.

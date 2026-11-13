@@ -32,10 +32,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: `${BRAND.name} — From library to setlist`,
-  description: "AI-powered DJ prep. Import your library, build your set, export to Serato or Rekordbox.",
+  description: "AI DJ prep: build sets and crates from your own library, export to Serato or Rekordbox (XML or M3U), and move from Serato to Rekordbox free with your hot cues.",
   openGraph: {
     title: `${BRAND.name} — From library to setlist`,
-    description: "AI-powered DJ prep. Import your library, build your set, export to Serato or Rekordbox.",
+    description: "AI DJ prep: build sets and crates from your own library, export to Serato or Rekordbox (XML or M3U), and move from Serato to Rekordbox free with your hot cues.",
     siteName: BRAND.name,
   },
 };
