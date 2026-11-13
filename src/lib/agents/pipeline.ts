@@ -359,7 +359,7 @@ function filterTracksForGig(
 
   // Genre GATES the pool only when a genre axis is supplied: a track outside the
   // gig's genre family — a different super-family (R&B for a Trance gig) OR an
-  // unrecognised 'other' genre (Rock/Country for a House gig) — is excluded
+  // unrecognized 'other' genre (Rock/Country for a House gig) — is excluded
   // outright via passesGenreGate. Genre is not a soft bonus a tempo match can tie.
   // Tracks that pass are scored by tier (exact 4 / family 3 / adjacent 2 / unknown
   // 0, floored at 0 for disco-lineage bridges). Secondary genre can rescue a track.
@@ -377,7 +377,7 @@ function filterTracksForGig(
   // genre, tempo is the only evidence they belong. So when a genre axis is set, an
   // untagged track must carry a real BPM inside the blueprint's window. This keeps
   // 97-BPM rap and BPM-0 voice memos out of a disco-house set. (Tagged tracks with
-  // no BPM are kept: some libraries are 90%+ un-analysed.)
+  // no BPM are kept: some libraries are 90%+ un-analyzed.)
   const untaggedOk = (t: LibraryTrack): boolean => {
     if (!input.primaryGenre) return true;
     if (genreRelevance(input.primaryGenre, t.genre ?? '', t.lastfmTags ?? []).tier !== 'unknown') return true;
@@ -877,7 +877,7 @@ export async function runSetlistPipeline(
       reviewNotes += `\n\nOnly ${anchorInSet} track${anchorInSet === 1 ? '' : 's'} by ${artistLabel(input.artists)} fit — filled the rest with similar artists (${artistLabel(shown)}${more}).`;
     }
     // Honesty for theme-sensitive crowds: we steer the selection toward crowd-
-    // appropriate subject matter, but that's model judgement over title-only
+    // appropriate subject matter, but that's model judgment over title-only
     // metadata — a "clean" edit can still carry adult themes. Never claim it's
     // guaranteed; put the final appropriateness call back on the DJ + their client.
     if (isThemeSensitiveCrowd(input.crowdContext)) {

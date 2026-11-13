@@ -73,8 +73,8 @@ function isFrameSync(b: Uint8Array, o: number): boolean {
   return versionId !== 1 && layer === 1 && bitrateIdx !== 0 && bitrateIdx !== 0xf && srIdx !== 3;
 }
 
-/** Scan `bytes` from `from` for the first valid Layer III frame and analyse it. */
-export function analyseFirstFrame(bytes: Uint8Array, from = 0, scanLen = 4096): FrameAnalysis | null {
+/** Scan `bytes` from `from` for the first valid Layer III frame and analyze it. */
+export function analyzeFirstFrame(bytes: Uint8Array, from = 0, scanLen = 4096): FrameAnalysis | null {
   const limit = Math.min(bytes.length - 4, from + scanLen);
   let o = -1;
   for (let i = from; i <= limit; i++) {

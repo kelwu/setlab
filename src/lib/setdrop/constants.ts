@@ -151,7 +151,7 @@ export const SAMPLE_TRACKS: SampleTrack[] = [
     stores:{ beatport:'green', bpmSupreme:'green', traxsource:'green', djcity:'green' }},
   { pos:3, artist:'Drake', title:'Rich Flex', bpm:138, key:'11B', energy:6,
     wishlist:true, wordplay:null,
-    why:'Energy jump — the set shifts gears here. Crowd recogniser, creates a room-wide moment. Download before gig.',
+    why:'Energy jump — the set shifts gears here. Crowd recognizer, creates a room-wide moment. Download before gig.',
     transition:'Filter swap at the break. Chop the intro.',
     stores:{ beatport:'yellow', bpmSupreme:'green', traxsource:'red', djcity:'green' }},
   { pos:4, artist:'Adekunle Gold', title:'Okay (feat. Wale)', bpm:120, key:'9A', energy:6,
@@ -166,7 +166,7 @@ export const SAMPLE_TRACKS: SampleTrack[] = [
     stores:{ beatport:'green', bpmSupreme:'yellow', traxsource:'green', djcity:'yellow' }},
   { pos:6, artist:'Tems', title:'Free Mind', bpm:124, key:'6A', energy:7,
     wishlist:false, wordplay:null,
-    why:'Sustain phase — Tems holds the room after the peak. Crowd favourite, emotional height at a slightly lower intensity.',
+    why:'Sustain phase — Tems holds the room after the peak. Crowd favorite, emotional height at a slightly lower intensity.',
     transition:'BPM match, swap on intro. Smooth.',
     stores:{ beatport:'yellow', bpmSupreme:'green', traxsource:'yellow', djcity:'green' }},
   { pos:7, artist:'DJ Snake', title:'Taki Taki (feat. Ozuna)', bpm:130, key:'5B', energy:7,
@@ -189,7 +189,7 @@ export const LIBRARY_TRACKS: SampleTrack[] = [
   { pos:12, artist:'Rema', title:'Calm Down', bpm:106, key:'1A', energy:4, wishlist:false, wordplay:null, why:'', transition:'', stores:{beatport:'green',bpmSupreme:'green',traxsource:'green',djcity:'green'} },
   { pos:13, artist:'Omah Lay', title:'Soso', bpm:118, key:'8A', energy:5, wishlist:false, wordplay:null, why:'', transition:'', stores:{beatport:'yellow',bpmSupreme:'green',traxsource:'green',djcity:'green'} },
   { pos:14, artist:'Fireboy DML', title:'Peru', bpm:126, key:'10B', energy:6, wishlist:true, wordplay:null, why:'', transition:'', stores:{beatport:'green',bpmSupreme:'yellow',traxsource:'red',djcity:'green'} },
-  { pos:15, artist:'Asake', title:'Organise', bpm:133, key:'6B', energy:7, wishlist:false, wordplay:null, why:'', transition:'', stores:{beatport:'green',bpmSupreme:'green',traxsource:'yellow',djcity:'green'} },
+  { pos:15, artist:'Asake', title:'Organize', bpm:133, key:'6B', energy:7, wishlist:false, wordplay:null, why:'', transition:'', stores:{beatport:'green',bpmSupreme:'green',traxsource:'yellow',djcity:'green'} },
 ];
 
 export type PageId = 'landing' | 'dashboard' | 'builder' | 'output' | 'library' | 'share' | 'history';

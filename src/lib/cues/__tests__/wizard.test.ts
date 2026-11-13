@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { analysePick } from '../folder-pick';
+import { analyzePick } from '../folder-pick';
 import { buildCrateTree, flattenCrates, pruneCrateTree } from '../serato/crate-reader';
 import { cuesToPositionMarks } from '../rekordbox-marks';
 import type { CuePoint } from '../types';
 
-describe('analysePick', () => {
+describe('analyzePick', () => {
   it('finds the database, its crates and the audio', () => {
     const rel = [
       'Music/_Serato_/database V2',
@@ -18,7 +18,7 @@ describe('analysePick', () => {
       'Music/Old/_Serato_/Subcrates/Old.crate',
       'Music/Old/b.m4a',
     ];
-    const l = analysePick(rel);
+    const l = analyzePick(rel);
     expect(l.dbIndex).toBe(0);
     expect(l.crateIndexes).toEqual([1, 2]);
     expect(l.audioIndexes.map(i => rel[i])).toEqual(['Music/House/a.mp3', 'Music/Old/b.m4a']);
@@ -26,7 +26,7 @@ describe('analysePick', () => {
   });
 
   it('reports a pick with no Serato library', () => {
-    expect(analysePick(['Tunes/a.mp3']).dbIndex).toBeNull();
+    expect(analyzePick(['Tunes/a.mp3']).dbIndex).toBeNull();
   });
 });
 

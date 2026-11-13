@@ -6,7 +6,7 @@
 //     Start/End: seconds, float, ALWAYS '.' as the decimal separator.
 //     Num:  0-7 = hot cue A-H;  -1 = memory cue / memory loop.
 //     Red/Green/Blue: 0-255. Not in the official spec but present in real
-//       rekordbox 5/6/7 exports, so we always write them when we have a colour.
+//       rekordbox 5/6/7 exports, so we always write them when we have a color.
 
 import { CuePoint } from './types';
 

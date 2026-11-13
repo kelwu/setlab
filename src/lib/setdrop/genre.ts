@@ -157,7 +157,7 @@ export function genreFetchPatterns(gigGenre: string): string[] | null {
 // setlist pool, and the readiness signal from drifting apart.
 //
 // Why not just check genreRelevance().score >= 0? Because genreRelevance scores a
-// genre it doesn't recognise ('other' super-family: Rock, Country…) as a soft
+// genre it doesn't recognize ('other' super-family: Rock, Country…) as a soft
 // "adjacent" (2), so a score gate leaks them into an electronic set (the
 // Bon-Jovi-in-a-house-crate bug). This gate admits: an exact/family token match; a
 // same-known-super-family track; a disco-lineage bridge; or — as a fallback so a

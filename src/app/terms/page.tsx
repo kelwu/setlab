@@ -93,7 +93,7 @@ export default function TermsPage() {
         <P>
           {B} helps DJs prepare: it imports your Serato or Rekordbox library information, uses AI to
           suggest setlists and crates, identifies tracks, and exports playlists and crates for your DJ
-          software. It also converts a Serato library — tracks, hot cues, loops, colours and crates — into a
+          software. It also converts a Serato library — tracks, hot cues, loops, colors and crates — into a
           Rekordbox XML file.
         </P>
         <P>
@@ -113,7 +113,7 @@ export default function TermsPage() {
             backups.</>,
           <>We work hard to place every cue precisely, including correcting the known timing differences
             between how Serato and Rekordbox read MP3 files, but we can&apos;t guarantee every cue, loop,
-            colour or crate will convert exactly for every file. Check important tracks before a gig.</>,
+            color or crate will convert exactly for every file. Check important tracks before a gig.</>,
           <>In this version only MP3 files carry cues; other formats move across without them.</>,
         ]} />
 

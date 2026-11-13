@@ -36,9 +36,9 @@ export interface RbPlaylistNode {
   children?: RbPlaylistNode[];
 }
 
-// Rekordbox's eight track colours, as its own XML exports write them. The
-// Colour attribute only takes these, so a Serato colour snaps to the nearest.
-const RB_TRACK_COLOURS: Rgb[] = [
+// Rekordbox's eight track colors, as its own XML exports write them. The
+// Colour attribute only takes these, so a Serato color snaps to the nearest.
+const RB_TRACK_COLORS: Rgb[] = [
   { r: 0xff, g: 0x00, b: 0x7f }, // pink
   { r: 0xff, g: 0x00, b: 0x00 }, // red
   { r: 0xff, g: 0xa5, b: 0x00 }, // orange
@@ -49,12 +49,12 @@ const RB_TRACK_COLOURS: Rgb[] = [
   { r: 0x66, g: 0x00, b: 0x99 }, // purple
 ];
 
-/** Serato's "no colour" is white (or black on some versions) — leave unset. */
-function trackColourAttr(c: Rgb | null | undefined): string {
+/** Serato's "no color" is white (or black on some versions) — leave unset. */
+function trackColorAttr(c: Rgb | null | undefined): string {
   if (!c) return '';
   const hex = rgbToHex(c);
   if (hex === 'FFFFFF' || hex === '000000') return '';
-  return ` Colour="0x${rgbToHex(nearestInPalette(c, RB_TRACK_COLOURS))}"`;
+  return ` Colour="0x${rgbToHex(nearestInPalette(c, RB_TRACK_COLORS))}"`;
 }
 
 export function toRekordboxLocation(filePath: string): string {
@@ -99,7 +99,7 @@ function trackXml(t: RbTrack, markOpts: MarkOptions): string {
     + ` TotalTime="${t.durationMs ? Math.max(1, Math.round(t.durationMs / 1000)) : 0}"`
     + `${attr('SampleRate', t.sampleRate)}`
     + `${t.bpm ? ` AverageBpm="${t.bpm.toFixed(2)}"` : ''}${attr('Tonality', t.tonality)}`
-    + `${attr('Comments', t.comment)}${trackColourAttr(t.trackColor)}`
+    + `${attr('Comments', t.comment)}${trackColorAttr(t.trackColor)}`
     + ` Location="${esc(toRekordboxLocation(t.location))}"`;
   const marks = t.cues?.length ? cuesToPositionMarks(t.cues, markOpts) : '';
   return marks ? `${head}>\n${marks}\n    </TRACK>` : `${head}/>`;

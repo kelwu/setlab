@@ -74,7 +74,7 @@ export function matchLibrary(seratoPaths: string[], pickedRelPaths: string[]): M
     const pick = matchSeratoPath(path, index);
     if (pick === null) continue;
     // The Serato path is <prefix>/<picked path, possibly minus its top folder>.
-    // Normalise the prefix to "what sits above the picked folder".
+    // Normalize the prefix to "what sits above the picked folder".
     const s = segments(path);
     const p = pickedSegs[pick];
     const withTop = s.slice(-p.length).join('/') === p.join('/');

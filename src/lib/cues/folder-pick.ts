@@ -21,7 +21,7 @@ export interface PickLayout {
 
 const segs = (p: string) => p.replace(/\\/g, '/').split('/').filter(Boolean);
 
-export function analysePick(relPaths: string[]): PickLayout {
+export function analyzePick(relPaths: string[]): PickLayout {
   let dbIndex: number | null = null;
   let dbDepth = Infinity;
   let dbSeratoDir = '';

@@ -13,7 +13,7 @@ import { trackEvent } from '@/lib/analytics';
 import { isLocalFilePath } from '@/lib/setdrop/file-path';
 import { parseSeratoDatabase } from '@/lib/setdrop/serato-db-parser';
 import type { LibraryTrack } from '@/lib/agents/types';
-import { analysePick } from '@/lib/cues/folder-pick';
+import { analyzePick } from '@/lib/cues/folder-pick';
 import {
   buildCrateTree, flattenCrates, parseSeratoCrate, pruneCrateTree, CrateNode,
 } from '@/lib/cues/serato/crate-reader';
@@ -48,7 +48,7 @@ export function ConvertWizard() {
   const [root, setRoot] = useState('');
   const [loopsAsHotcue, setLoopsAsHotcue] = useState(false);
   const [dupMemory, setDupMemory] = useState(false);
-  const [trackColours, setTrackColours] = useState(true);
+  const [trackColors, setTrackColors] = useState(true);
   const [result, setResult] = useState<ConvertStats | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { scan, cancel, progress } = useCueScan();
@@ -61,7 +61,7 @@ export function ConvertWizard() {
     try {
       const files = Array.from(list);
       const rel = files.map(f => f.webkitRelativePath || f.name);
-      const layout = analysePick(rel);
+      const layout = analyzePick(rel);
       if (layout.dbIndex === null) {
         setError('No Serato library found in that folder. Choose the folder that contains "_Serato_" — usually Music on your computer, or the top level of your external drive.');
         return;
@@ -172,14 +172,14 @@ export function ConvertWizard() {
   // ── Step 4: export ─────────────────────────────────────────────────────────
   // Conversion is free for every signed-in DJ and doesn't count toward the
   // monthly export limit (Lexicon converts whole libraries free; the paid value
-  // is cues travelling with SetLab's own set/crate exports).
+  // is cues traveling with SetLab's own set/crate exports).
   const exportXml = () => {
     if (!lib) return;
     setError(null);
     const selected = new Set(rows.filter(r => !excluded.has(r.path)).map(r => r.path));
     const crates = mode === 'library' ? lib.crates : pruneCrateTree(lib.crates, pickedCrates);
     const { xml, stats } = convertSeratoLibrary({
-      dbTracks: lib.dbTracks, crates, scans, root, selected, trackColours,
+      dbTracks: lib.dbTracks, crates, scans, root, selected, trackColors,
       markOpts: { loopsAsHotcue, duplicateHotCuesAsMemory: dupMemory },
     });
     downloadRekordboxXml(xml, 'SetLab Serato to Rekordbox');
@@ -204,7 +204,7 @@ export function ConvertWizard() {
         <PageHeader
           eyebrow="Serato → Rekordbox"
           title="CONVERT YOUR LIBRARY"
-          subtitle="Tracks, hot cues, loops, colours and crates — moved to Rekordbox with the MP3 timing fix applied."
+          subtitle="Tracks, hot cues, loops, colors and crates — moved to Rekordbox with the MP3 timing fix applied."
         />
 
         <Steps step={step} />
@@ -312,7 +312,7 @@ export function ConvertWizard() {
                 label="Put saved loops on free hot cue pads (otherwise they become memory loops)" />
               <Check checked={dupMemory} onChange={setDupMemory}
                 label="Also add each hot cue as a memory cue" />
-              <Check checked={trackColours} onChange={setTrackColours} label="Carry track colours" />
+              <Check checked={trackColors} onChange={setTrackColors} label="Carry track colors" />
               <div style={{ display: 'flex', gap: SD.s3, marginTop: SD.s5, flexWrap: 'wrap' }}>
                 <SDButton onClick={exportXml} disabled={rows.length === excluded.size}>Download Rekordbox XML</SDButton>
                 <SDButton ghost small onClick={() => setStep('select')}>Back</SDButton>

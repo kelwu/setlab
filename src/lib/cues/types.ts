@@ -19,7 +19,7 @@ export interface CuePoint {
   /** Loops only. */
   endMs?: number;
   name: string;
-  /** Colour as the source app DISPLAYS it (not its internal stored value). */
+  /** Color as the source app DISPLAYS it (not its internal stored value). */
   color: Rgb | null;
   locked?: boolean;
 }
@@ -61,6 +61,6 @@ export interface TrackCues {
   trackColor: Rgb | null;
   comment?: string;
   bpmLocked?: boolean;
-  /** Captured but not exported in v1 — Rekordbox re-analyses the grid. */
+  /** Captured but not exported in v1 — Rekordbox re-analyzes the grid. */
   beatgrid?: BeatgridMarker[];
 }

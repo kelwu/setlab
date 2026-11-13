@@ -2,7 +2,7 @@
 //
 // Mixxx precedence (plan §2): for hot cues 0-4 the legacy block wins on
 // position; a cue present in Markers2 but *unset* in Markers_ is treated as
-// deleted and dropped. Cues 5-7, loops, names and colours all come from
+// deleted and dropped. Cues 5-7, loops, names and colors all come from
 // Markers2. When there is no legacy block, Markers2 is taken as-is.
 
 import { CuePoint } from '../types';

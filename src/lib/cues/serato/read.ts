@@ -1,13 +1,13 @@
 // Read one Serato MP3's cues into the neutral TrackCues model.
 //
 // Pulls the Serato GEOB blocks and comment from the ID3 tag, merges the modern
-// and legacy cue data, and analyses the first MPEG frame for the offset case.
+// and legacy cue data, and analyzes the first MPEG frame for the offset case.
 // v1 is MP3 only (plan §7a decision 4); AIFF reuses this same ID3 path later.
 
 import { ByteSource } from '../bytes';
 import { AudioFormat, TrackCues } from '../types';
 import { readId3 } from './id3';
-import { analyseFirstFrame, FrameAnalysis, mp3DurationMs } from './mpeg-header';
+import { analyzeFirstFrame, FrameAnalysis, mp3DurationMs } from './mpeg-header';
 import { parseSeratoMarkers2 } from './markers2';
 import { parseSeratoMarkers_ } from './markers';
 import { mergeSeratoCues } from './merge';
@@ -44,7 +44,7 @@ export async function readSeratoMp3Cues(src: ByteSource, filename: string): Prom
 
   const windowEnd = Math.min(src.size, id3.audioStart + 8192);
   const frame = id3.audioStart < src.size
-    ? analyseFirstFrame(await src.read(id3.audioStart, windowEnd))
+    ? analyzeFirstFrame(await src.read(id3.audioStart, windowEnd))
     : null;
 
   const trackCues: TrackCues = {

@@ -145,7 +145,7 @@ describe('colors', () => {
     expect(rgbToHex({ r: 0xc0, g: 0x26, b: 0x26 })).toBe('C02626');
     expect(hexToRgb('#E62828')).toEqual({ r: 0xe6, g: 0x28, b: 0x28 });
   });
-  it('finds the nearest palette colour', () => {
+  it('finds the nearest palette color', () => {
     const palette = [{ r: 230, g: 40, b: 40 }, { r: 40, g: 226, b: 20 }];
     expect(nearestInPalette({ r: 200, g: 20, b: 20 }, palette)).toEqual(palette[0]);
   });

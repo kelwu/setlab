@@ -15,7 +15,7 @@ export interface ScannedFile {
   lastModified: number;
   fingerprint: string;
   status: ScanStatus;
-  /** Present for 'ok' and 'no-cues' (comment/colour can exist without cues). */
+  /** Present for 'ok' and 'no-cues' (comment/color can exist without cues). */
   cues?: TrackCues;
   durationMs?: number;
   error?: string;
