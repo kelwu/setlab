@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ blocked: true });
   }
 
-  // Log the question and notify via email (non-blocking). We hold onto the insert
+  // Log the question (non-blocking). We hold onto the insert
   // promise so the streamed reply can be written back onto the SAME row once the
   // response finishes — giving an auditable question↔answer transcript. The admin
   // client is used so RLS never blocks the select-back or the later update.
@@ -47,27 +47,14 @@ export async function POST(req: NextRequest) {
       },
     );
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
-  if (apiKey) {
-    const resend = new Resend(apiKey);
-    resend.emails.send({
-      from: `${BRAND.name} Chat <${fromEmail}>`,
-      to: 'kelcwu@gmail.com',
-      replyTo: user?.email ?? undefined,
-      subject: `Chat question${user?.email ? ` from ${user.email}` : ' from visitor'}`,
-      html: `
-        <div style="font-family:monospace;max-width:600px">
-          <h2 style="color:#F5A623;margin:0 0 16px">${BRAND.name} — Chat Question</h2>
-          <p style="white-space:pre-wrap;background:#141414;color:#F0F0F0;padding:16px;border-radius:4px;border:1px solid #222">${message.trim()}</p>
-          <table style="color:#909090;font-size:12px;margin-top:16px;border-collapse:collapse">
-            <tr><td style="padding:2px 12px 2px 0">From</td><td>${user?.email ?? 'anonymous visitor'}</td></tr>
-            <tr><td style="padding:2px 12px 2px 0">Page</td><td>${page ?? '—'}</td></tr>
-          </table>
-        </div>
-      `,
-    }).catch(err => console.error('[chat] email failed', err));
-  }
+  // The notification email is sent once the reply is known (see the stream's
+  // finally block, and the pre-stream failure path), so it can show both sides.
+  const notify = (reply: string | null) => sendChatEmail({
+    message: message.trim(),
+    reply,
+    userEmail: user?.email ?? null,
+    page: typeof page === 'string' ? page : null,
+  });
 
   // Open the stream before returning so a pre-stream failure surfaces as a real
   // HTTP error rather than an empty 200. The timeout guards against a hung call
@@ -120,6 +107,7 @@ export async function POST(req: NextRequest) {
     }, { timeout: 25_000 });
   } catch (err) {
     console.error('[chat] stream failed to start', err);
+    await notify(null);
     return new Response('Sorry — chat is unavailable right now. Please try again.', {
       status: 503,
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
@@ -150,16 +138,20 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(notice));
       } finally {
         controller.close();
-        // Persist the assistant reply onto the logged question row. Best-effort:
-        // the stream is already done, so a logging failure must never surface.
-        try {
-          const { data: row } = await logPromise;
-          if (row?.id && full.trim()) {
-            await admin.from('feedback').update({ reply: full }).eq('id', row.id);
+        // Persist the assistant reply onto the logged question row and send the
+        // notification email with both question and reply. Best-effort: the
+        // stream is already done, so a failure here must never surface.
+        const persist = (async () => {
+          try {
+            const { data: row } = await logPromise;
+            if (row?.id && full.trim()) {
+              await admin.from('feedback').update({ reply: full }).eq('id', row.id);
+            }
+          } catch (err) {
+            console.error('[chat] reply log failed', err);
           }
-        } catch (err) {
-          console.error('[chat] reply log failed', err);
-        }
+        })();
+        await Promise.all([persist, notify(full.trim() || null)]);
       }
     },
   });
@@ -167,4 +159,59 @@ export async function POST(req: NextRequest) {
   return new Response(readable, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
+}
+
+const REPLY_EMAIL_LIMIT = 4000;
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function sendChatEmail({ message, reply, userEmail, page }: {
+  message: string;
+  reply: string | null;
+  userEmail: string | null;
+  page: string | null;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
+
+  const replyText = reply
+    ? reply.length > REPLY_EMAIL_LIMIT
+      ? `${reply.slice(0, REPLY_EMAIL_LIMIT)}\n\n[…truncated, full reply is in the feedback table]`
+      : reply
+    : '(No reply: the bot was unavailable or returned nothing.)';
+
+  const box = 'white-space:pre-wrap;background:#141414;color:#F0F0F0;padding:16px;border-radius:4px;border:1px solid #222';
+  const label = 'color:#909090;font-size:12px;margin:16px 0 4px';
+
+  try {
+    await new Resend(apiKey).emails.send({
+      from: `${BRAND.name} Chat <${fromEmail}>`,
+      to: 'kelcwu@gmail.com',
+      replyTo: userEmail ?? undefined,
+      subject: `Chat question${userEmail ? ` from ${userEmail}` : ' from visitor'}`,
+      html: `
+        <div style="font-family:monospace;max-width:600px">
+          <h2 style="color:#F5A623;margin:0 0 16px">${escapeHtml(BRAND.name)} — Chat Question</h2>
+          <p style="${label}">Question</p>
+          <p style="${box}">${escapeHtml(message)}</p>
+          <p style="${label}">Bot reply</p>
+          <p style="${box}">${escapeHtml(replyText)}</p>
+          <table style="color:#909090;font-size:12px;margin-top:16px;border-collapse:collapse">
+            <tr><td style="padding:2px 12px 2px 0">From</td><td>${escapeHtml(userEmail ?? 'anonymous visitor')}</td></tr>
+            <tr><td style="padding:2px 12px 2px 0">Page</td><td>${escapeHtml(page ?? '—')}</td></tr>
+          </table>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('[chat] email failed', err);
+  }
 }
