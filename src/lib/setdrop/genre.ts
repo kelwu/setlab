@@ -107,7 +107,29 @@ export function genreRelevance(gigGenre: string, trackGenre: string, tags: strin
   const tFam = familyOf(trackGenre, tags);
   if (gFam && tFam && gFam === tFam) return { tier: 'family', score: 3 };
 
+  // A genre string we can't place anywhere (a record-pool label like "Peru BPM",
+  // "Other", "Unknown") says nothing about the track, so treat it like an empty
+  // tag: the untagged fallback, placed by tempo. Without this, a library tagged
+  // with its record pool's name had no usable tracks at all.
+  if (lacksGenreSignal(trackGenre, tags)) return { tier: 'unknown', score: 0 };
+
   return { tier: 'adjacent', score: 2 };
+}
+
+// Real genres that never belong in a dance set, plus non-music files. These are a
+// genuine signal (keep them out), not noise to fall back on.
+const NON_DANCE = /\b(rock|metal|punk|grunge|country|folk|blues|classical|orchestral|jazz|gospel|christian|soundtrack|score|spoken|podcast|comedy|audiobook|loops?|samples?|sfx|fx|tools?)\b/;
+
+/** True when a track carries no usable genre evidence: no genre or tags at all, or
+ *  only a string we can't place in any family or super-family (and that isn't a
+ *  known non-dance genre like Rock or Blues). Such tracks are the setlist pool's
+ *  untagged fallback: admitted only by a real BPM inside the set's tempo window. */
+export function lacksGenreSignal(trackGenre: string, tags: string[] = []): boolean {
+  const hay = [clean(trackGenre), ...tags.map(clean)].filter(Boolean).join(' ');
+  if (!hay) return true;
+  if (superFamily(trackGenre, tags) !== 'other') return false;
+  if (familyOf(trackGenre, tags) || isBridgeGenre(trackGenre, tags)) return false;
+  return !NON_DANCE.test(hay);
 }
 
 // Disco-lineage genres that legitimately serve BOTH super-families — they bridge
@@ -176,8 +198,13 @@ export function passesGenreGate(
   const { allowUnknown = true } = opts;
   const rel = genreRelevance(gigGenre, trackGenre, tags);
   if (rel.tier === 'exact' || rel.tier === 'family') return true;
-  if (rel.tier === 'unknown') return allowUnknown;  // no genre signal — fallback, caller's choice
   const gSuper = superFamily(gigGenre);
+  if (rel.tier === 'unknown') {
+    // No usable genre signal — fallback, caller's choice. An unplaceable genre
+    // string still passes an unclassified gig genre, as it did before it counted
+    // as 'unknown'.
+    return allowUnknown || (gSuper === 'other' && (!!clean(trackGenre) || tags.some(t => !!clean(t))));
+  }
   if (gSuper === 'other') return true;              // gig genre itself unclassified — don't over-filter
   if (isBridgeGenre(trackGenre, tags)) return true; // disco lineage serves any super-family
   // tier 'adjacent' or 'off': keep only within the same known super-family.

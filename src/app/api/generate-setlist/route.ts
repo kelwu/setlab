@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
 
       // Load library
       let library: LibraryTrack[] = tracks?.length ? tracks : [];
+      let playlistNotFound = false;
       if (!library.length) {
         try {
           if (user) {
@@ -129,13 +130,17 @@ export async function POST(req: NextRequest) {
             if (lib && input.sourcePlaylist) {
               // Playlist mode: the pool is exactly the crate's tracks, joined by real
               // serato_tracks UUIDs (see library-save.ts) — no genre filtering.
-              const { data: crate } = await supabase
+              // Rekordbox allows two playlists with the same name (in different
+              // folders), so a name can match several crate rows. maybeSingle()
+              // errored on those, the pool came back empty, and the DJ was told
+              // their playlist had 0 tracks. Merge every same-name crate instead.
+              const { data: crates } = await supabase
                 .from('serato_crates')
                 .select('track_ids')
                 .eq('library_id', lib.id)
-                .eq('crate_name', input.sourcePlaylist)
-                .maybeSingle();
-              const ids = (crate?.track_ids ?? []) as string[];
+                .eq('crate_name', input.sourcePlaylist);
+              const ids = [...new Set((crates ?? []).flatMap(c => (c.track_ids ?? []) as string[]))];
+              if (!ids.length) playlistNotFound = true;
               const CHUNK = 300;
               const rows: Array<{
                 id: string; artist: string | null; title: string | null;
@@ -231,7 +236,19 @@ export async function POST(req: NextRequest) {
                   patterns.length
                     ? applyAxes(base().or(patterns.map(p => `genre.ilike.%${p}%`).join(','))).limit(1000)
                     : applyAxes(base().not('genre', 'ilike', `%${sanitizeLike(genre)}%`)).limit(100),
-                  applyAxes(base().or('genre.is.null,genre.eq.')).limit(100),
+                  // Untagged tracks with a real BPM: the gate's fallback, placed by
+                  // tempo. 100 arbitrary rows (many with no BPM) starved libraries
+                  // that are mostly untagged.
+                  applyAxes(base().or('genre.is.null,genre.eq.').gt('bpm', 0)).limit(400),
+                  // Tracks whose genre string matches none of the family patterns
+                  // (a record-pool label like "Peru BPM", "Other"). The gate treats
+                  // the unplaceable ones as untagged and drops real non-dance genres.
+                  patterns.length
+                    ? applyAxes(patterns.reduce(
+                        (q, p) => q.not('genre', 'ilike', `%${p}%`),
+                        base().not('genre', 'is', null).neq('genre', '').gt('bpm', 0),
+                      )).limit(400)
+                    : null,
                 ]);
                 const seenIds = new Set<string>();
                 for (const r of results) {
@@ -326,7 +343,15 @@ export async function POST(req: NextRequest) {
           }
         } catch { /* non-fatal — fall through to demo */ }
       }
-      if (!library.length) library = getDemoLibrary();
+      // The DJ picked a playlist we can't find: say so, rather than quietly building
+      // from the wishlist or demo tracks and reporting the playlist as empty.
+      if (playlistNotFound && !library.length) {
+        throw new SetlistInputError(
+          `We couldn't find any tracks in your "${input.sourcePlaylist}" playlist. Re-import your library, or pick another playlist.`,
+        );
+      }
+      const usingDemoLibrary = !library.length;
+      if (usingDemoLibrary) library = getDemoLibrary();
 
       // Fetch recently played tracks + post-gig reflections. The reflections feed the
       // per-DJ taste loop: what the DJ actually swapped/skipped/added at past gigs
@@ -369,7 +394,16 @@ export async function POST(req: NextRequest) {
         input, library, recentlyPlayed, affinity,
         (event) => { writer.write(encode(event)); },
         (u) => { usages.push(u); },
-      );
+      ).catch((err: unknown) => {
+        // No library imported yet: the demo tracks can't fill most requests, and
+        // "your library has only 0 House tracks" reads as a bug. Point at the fix.
+        if (usingDemoLibrary && err instanceof SetlistInputError) {
+          throw new SetlistInputError(
+            "SetLab builds sets from your own music, and you haven't imported a library yet. Import your Serato or Rekordbox library, then build your set.",
+          );
+        }
+        throw err;
+      });
       await recordCost(user.id, 'generate-setlist', usages);
       await recordGenerationEvent(user.id, 'generate-setlist', 'success', Date.now() - genStart);
 

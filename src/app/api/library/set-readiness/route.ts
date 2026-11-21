@@ -49,14 +49,14 @@ export async function POST(req: NextRequest) {
       .single();
     if (!library) return NextResponse.json(unknownReadiness('no-library'));
 
-    // Tiny scan (genre + tags + year + artist), paged like analyze-gaps.
+    // Tiny scan (genre + tags + year + artist + bpm), paged like analyze-gaps.
     const PAGE = 1000;
-    const rows: Array<{ genre: string | null; lastfm_tags: unknown; year: number | null; artist: string | null }> = [];
+    const rows: Array<{ genre: string | null; lastfm_tags: unknown; year: number | null; artist: string | null; bpm: number | null }> = [];
     let from = 0;
     while (true) {
       const { data: page } = await admin
         .from('serato_tracks')
-        .select('genre, lastfm_tags, year, artist')
+        .select('genre, lastfm_tags, year, artist, bpm')
         .eq('library_id', library.id)
         .eq('in_library', true)
         .range(from, from + PAGE - 1);
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     if (!rows.length) return NextResponse.json(unknownReadiness('no-library'));
 
     const gigSuper = genreActive ? superFamily(primaryGenre!) : 'other';
-    const counts: ReadinessCounts = { exact: 0, family: 0, adjacent: 0, superFamily: 0, usable: 0, withYear: 0, poolTotal: 0 };
+    const counts: ReadinessCounts = { exact: 0, family: 0, adjacent: 0, superFamily: 0, usable: 0, withYear: 0, poolTotal: 0, untagged: 0 };
 
     for (const t of rows) {
       const genre = t.genre ?? '';
@@ -90,6 +90,11 @@ export async function POST(req: NextRequest) {
       if (artistActive && !anchors.some(a => (t.artist ?? '').toLowerCase().includes(a))) continue;
       counts.poolTotal++;
       if (match && !match.inGenre) continue; // out of the gig's genre family (and its bridges) → excluded
+      if (match?.tier === 'unknown') {
+        // Untagged: usable only with a real BPM, as in the pipeline's pool.
+        if (!((t.bpm ?? 0) > 0)) continue;
+        counts.untagged = (counts.untagged ?? 0) + 1;
+      }
       counts.usable++;
       if (t.year != null) counts.withYear++;
     }
