@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { loopsCreateContact, loopsSendEvent, updateLoopsContact } from '@/lib/email/loops';
+import { recordFirstTouch } from '@/lib/acquisition-server';
+import { FIRST_TOUCH_COOKIE } from '@/lib/acquisition';
 
 export async function POST() {
   const supabase = await createClient();
@@ -18,6 +21,8 @@ export async function POST() {
       subscriptionTier: 'free',
       signedUpAt: new Date().toISOString().split('T')[0],
     });
+    const cookieStore = await cookies();
+    await recordFirstTouch(user.id, cookieStore.get(FIRST_TOUCH_COOKIE)?.value);
   }
 
   return NextResponse.json({ ok: true });
