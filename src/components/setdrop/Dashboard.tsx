@@ -7,6 +7,8 @@ import { trackEvent } from '@/lib/analytics';
 import { SD } from '@/lib/setdrop/constants';
 import { SDButton, PageHeader, Card, CardHeader, Tabs, Badge, EmptyState, LoadingState } from './shared';
 import { WhatsNewModal } from './WhatsNewModal';
+import { GettingStarted } from './GettingStarted';
+import type { OnboardingProgress } from '@/lib/setdrop/onboarding';
 
 interface LibraryStats {
   totalTracks: number;
@@ -88,7 +90,7 @@ interface LibraryGap {
   emergingArtists?: EmergingArtist[];
 }
 
-export function Dashboard() {
+export function Dashboard({ onboarding }: { onboarding: OnboardingProgress }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [libraryStats, setLibraryStats] = useState<LibraryStats | null>(null);
@@ -319,55 +321,13 @@ export function Dashboard() {
           }
         />
 
-        {/* Onboarding — shown until library uploaded + first set built */}
-        {!onboardingDismissed && (libraryStats === null || (recentSets !== null && recentSets.length === 0)) && (
-          <div style={{ background:SD.surface, border:`1px solid ${SD.borderMid}`,
-            borderRadius:4, padding:'24px 28px', marginBottom:24 }}>
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, marginBottom:20 }}>
-              <div>
-                <div style={{ fontFamily:SD.mono, fontSize:12, letterSpacing:2,
-                  color:SD.accent, textTransform:'uppercase', marginBottom:6 }}>Get Started</div>
-                <div style={{ fontFamily:SD.body, fontSize:15, color:SD.text }}>
-                  Two steps to your first AI-generated set
-                </div>
-              </div>
-              <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('sd_onboarding_done','1'); }}
-                style={{ background:'none', border:'none', cursor:'pointer',
-                  fontFamily:SD.mono, fontSize:12, color:SD.textMuted, padding:'2px 6px' }}>✕</button>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              {[
-                { n:1, done: libraryStats !== null, label:'Upload your library', sub:'Import your Serato DB, Rekordbox XML, or add tracks manually to your wishlist', page:'library', cta:'Upload Library' },
-                { n:2, done: recentSets !== null && recentSets.length > 0, label:'Plan your first set', sub:'Tell the AI your gig — crowd, slot, duration — and it sequences an ordered set', page:'builder', cta:'Plan Set' },
-              ].map(step => (
-                <div key={step.n} style={{ display:'flex', alignItems:'center', gap:16,
-                  padding:'14px 18px', background:SD.bg,
-                  border:`1px solid ${step.done ? SD.green+'44' : SD.border}`,
-                  borderRadius:3 }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', flexShrink:0,
-                    background: step.done ? SD.greenDim : SD.surface2,
-                    border:`1px solid ${step.done ? SD.green+'66' : SD.border}`,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontFamily:SD.mono, fontSize:13,
-                    color: step.done ? SD.green : SD.textMuted }}>
-                    {step.done ? '✓' : step.n}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:SD.mono, fontSize:12, fontWeight:600,
-                      color: step.done ? SD.textSec : SD.text, marginBottom:2,
-                      textDecoration: step.done ? 'line-through' : 'none' }}>{step.label}</div>
-                    <div style={{ fontFamily:SD.body, fontSize:13, color:SD.textMuted }}>{step.sub}</div>
-                  </div>
-                  {!step.done && (
-                    <SDButton ghost onClick={() => router.push('/' + step.page)}
-                      style={{ fontSize:12, padding:'6px 14px', flexShrink:0 }}>
-                      {step.cta}
-                    </SDButton>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Getting started — 1. upload library, 2. plan a set, 3. export. Ticks off
+            from real account state and hides once all three are done. */}
+        {!onboardingDismissed && (
+          <GettingStarted
+            progress={onboarding}
+            onDismiss={() => { setOnboardingDismissed(true); localStorage.setItem('sd_onboarding_done','1'); }}
+          />
         )}
 
         {/* Set vs Crate — the Set Builder is the flagship, so it leads as a larger

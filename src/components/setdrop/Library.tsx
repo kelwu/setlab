@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { BRAND } from '@/lib/brand';
-import { SD, LIBRARY_TRACKS, SampleTrack, ConfidenceStatus } from '@/lib/setdrop/constants';
+import { SD, SampleTrack, ConfidenceStatus } from '@/lib/setdrop/constants';
 import { trackEvent, type LibraryUploadFailReason } from '@/lib/analytics';
 import { LibraryTrack, SetlistTrack } from '@/lib/agents/types';
 import { parseRekordboxLibrary, type RekordboxPlaylist } from '@/lib/setdrop/rekordbox-parser';
@@ -13,6 +13,8 @@ import { buildRekordboxXml, buildM3u, downloadRekordboxXml, downloadM3u, matchEx
 import { CueExportToggle, useCueExport } from './cues/CueExportToggle';
 import { gateExport } from '@/lib/setdrop/export-gate';
 import { SDButton, SDInput, ConfidenceBadge, EnergyDot, Tabs } from './shared';
+import { GettingStarted } from './GettingStarted';
+import type { OnboardingProgress } from '@/lib/setdrop/onboarding';
 
 // ─── Crate types ──────────────────────────────────────────────────────────────
 
@@ -159,6 +161,8 @@ const LibraryRow = React.memo(function LibraryRow({ track, tab, idx, onDelete, t
 // ─── Upload Zone ─────────────────────────────────────────────────────────────
 
 type UploadMode = 'db' | 'rekordbox';
+// Remembers which DJ software a returning user picked, so the drop zone opens on it.
+const SOFTWARE_PICK_KEY = 'sd_import_software';
 
 // Carries which import throw site failed so the caller can log a precise,
 // low-cardinality funnel reason instead of one generic bucket.
@@ -171,7 +175,6 @@ class ImportError extends Error {
 
 const SERATO_BLUE = '#1F6BFF';
 const SERATO_BLUE_DIM = 'rgba(31,107,255,0.10)';
-const SERATO_BLUE_BORDER = 'rgba(31,107,255,0.35)';
 
 function UploadZone({
   onFile, dragOver, setDragOver, parseError, uploadMode, setUploadMode,
@@ -180,7 +183,7 @@ function UploadZone({
   dragOver: boolean;
   setDragOver: (v: boolean) => void;
   parseError: string | null;
-  uploadMode: UploadMode;
+  uploadMode: UploadMode | null;
   setUploadMode: (m: UploadMode) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -204,7 +207,7 @@ function UploadZone({
   // the funnel can measure the pre-file-pick drop (landed on import but never
   // selected a library file), the largest and previously-invisible leak.
   useEffect(() => {
-    trackEvent.libraryImportViewed(uploadMode === 'db' ? 'serato' : 'rekordbox');
+    trackEvent.libraryImportViewed(uploadMode === 'db' ? 'serato' : uploadMode === 'rekordbox' ? 'rekordbox' : 'unpicked');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -242,21 +245,36 @@ function UploadZone({
     </>
   );
 
+  const selectedTag = (color: string) => (
+    <div style={{ marginTop:10, fontFamily:SD.mono, fontSize:11, letterSpacing:2, color }}>✓ SELECTED</div>
+  );
+
   return (
     <div style={{ marginBottom:28 }}>
+      {/* Ask first. Defaulting to Serato made Rekordbox users hunt for a
+          "database V2" file they don't have. */}
+      <div style={{ fontFamily:SD.mono, fontSize:13, letterSpacing:2, textTransform:'uppercase',
+        color:SD.text, marginBottom:4 }}>
+        Which DJ software do you use?
+      </div>
+      <div style={{ fontFamily:SD.body, fontSize:13, color:SD.textMuted, marginBottom:14, lineHeight:1.5 }}>
+        You&apos;ll export one file from it: the database V2 file for Serato, or the collection XML for Rekordbox.
+        It holds track info only (artist, title, BPM, key). No audio is uploaded.
+      </div>
       {/* Brand selector cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
+      <div role="radiogroup" aria-label="DJ software" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
         {/* Serato card */}
         <button
+          type="button" role="radio" aria-checked={uploadMode === 'db'}
           onClick={() => setUploadMode('db')}
           style={{
             background: uploadMode === 'db' ? SERATO_BLUE_DIM : SD.surface2,
-            border: uploadMode === 'db' ? `2px solid ${SERATO_BLUE}` : `2px solid ${SERATO_BLUE_BORDER}`,
+            border: uploadMode === 'db' ? `2px solid ${SERATO_BLUE}` : `2px solid ${SD.borderMid}`,
             borderRadius:4, padding:'20px 16px', cursor:'pointer',
             textAlign:'center', transition:'all .15s',
           }}
           onMouseEnter={e => { if (uploadMode !== 'db') e.currentTarget.style.borderColor = SERATO_BLUE; }}
-          onMouseLeave={e => { if (uploadMode !== 'db') e.currentTarget.style.borderColor = SERATO_BLUE_BORDER; }}
+          onMouseLeave={e => { if (uploadMode !== 'db') e.currentTarget.style.borderColor = SD.borderMid; }}
         >
           <div style={{
             fontFamily:SD.display, fontSize:22, letterSpacing:3,
@@ -265,10 +283,12 @@ function UploadZone({
           <div style={{ fontFamily:SD.mono, fontSize:13, letterSpacing:2, color: uploadMode === 'db' ? SERATO_BLUE : SD.textMuted }}>
             DB V2
           </div>
+          {uploadMode === 'db' && selectedTag(SERATO_BLUE)}
         </button>
 
         {/* Rekordbox card */}
         <button
+          type="button" role="radio" aria-checked={uploadMode === 'rekordbox'}
           onClick={() => setUploadMode('rekordbox')}
           style={{
             background: uploadMode === 'rekordbox' ? 'rgba(255,255,255,0.05)' : SD.surface2,
@@ -286,8 +306,16 @@ function UploadZone({
           <div style={{ fontFamily:SD.mono, fontSize:13, letterSpacing:2, color: uploadMode === 'rekordbox' ? SD.textSec : SD.textMuted }}>
             XML
           </div>
+          {uploadMode === 'rekordbox' && selectedTag(SD.text)}
         </button>
       </div>
+
+      {uploadMode === null ? (
+        <div data-testid="pick-software-hint" style={{ border:`2px dashed ${SD.border}`, borderRadius:4, padding:'28px 32px',
+          textAlign:'center', fontFamily:SD.mono, fontSize:13, color:SD.textMuted }}>
+          Pick Serato or Rekordbox above and we&apos;ll show you exactly which file to grab.
+        </div>
+      ) : (
 
       <div
         onClick={() => fileRef.current?.click()}
@@ -316,6 +344,7 @@ function UploadZone({
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
         />
       </div>
+      )}
       {parseError && (
         <div style={{ marginTop:12, padding:'12px 16px', background:SD.dangerDim,
           border:`1px solid ${SD.danger}4D`, borderRadius:SD.r2,
@@ -344,7 +373,7 @@ function StageSpinner() {
 function StageTracker({ stage, parsedCount, uploadMode, syncStats }: {
   stage: Exclude<UploadStage, 'idle'>;
   parsedCount: number | null;
-  uploadMode: UploadMode;
+  uploadMode: UploadMode | null;
   syncStats: { added: number; removed: number; unchanged: number } | null;
 }) {
   const stageOrder: UploadStage[] = ['parse', 'save', 'enrich', 'done'];
@@ -546,7 +575,13 @@ async function loadLibraryFromSupabase(): Promise<LibraryTrack[] | null> {
   return [...seratoTracks, ...wishlistTracks];
 }
 
-export function Library() {
+export function Library({ onboarding, fromPlan = false, newUser = false }: {
+  onboarding: OnboardingProgress;
+  /** Sent here from Plan Set because there's no library yet. */
+  fromPlan?: boolean;
+  /** Fresh signup (auth callback adds ?new_user=1). */
+  newUser?: boolean;
+}) {
   const router = useRouter();
   const [tab, setTab] = useState('library');
   const [search, setSearch] = useState('');
@@ -559,7 +594,28 @@ export function Library() {
   const [showUpload, setShowUpload] = useState(false);
   const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
   const [parsedCount, setParsedCount] = useState<number | null>(null);
-  const [uploadMode, setUploadMode] = useState<UploadMode>('db');
+  const [uploadMode, setUploadModeState] = useState<UploadMode | null>(null);
+  const setUploadMode = (m: UploadMode) => {
+    setUploadModeState(m);
+    try { localStorage.setItem(SOFTWARE_PICK_KEY, m); } catch { /* ignore */ }
+  };
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SOFTWARE_PICK_KEY);
+      // Read in an effect (localStorage is client-only) to avoid a hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved === 'db' || saved === 'rekordbox') setUploadModeState(saved);
+    } catch { /* ignore */ }
+  }, []);
+  // Set when an import finishes, so the screen can say what happened and point
+  // at step 2 instead of silently dropping the DJ into a track table.
+  const [justImported, setJustImported] = useState<number | null>(null);
+  useEffect(() => {
+    if (!newUser) return;
+    trackEvent.signUp('google');
+    router.replace(fromPlan ? '/library?from=plan' : '/library');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [showAddForm, setShowAddForm] = useState(false);
   const [addArtist, setAddArtist] = useState('');
   const [addTitle, setAddTitle] = useState('');
@@ -624,8 +680,9 @@ export function Library() {
     }
   };
 
-  const finishUpload = () => {
+  const finishUpload = (count: number) => {
     trackEvent.libraryUploaded(uploadMode === 'db' ? 'serato' : 'rekordbox');
+    setJustImported(count);
     setUploadStage('enrich');
     fetch('/api/library/enrich-lastfm', { method: 'POST' }).catch(() => {});
     setTimeout(() => {
@@ -680,7 +737,7 @@ export function Library() {
           setUploadStage('save');
           const loaded = await loadLibraryFromSupabase();
           if (loaded) setUploadedTracks(loaded);
-          finishUpload();
+          finishUpload(data.count);
         })
         .catch(err => {
           setUploadStage('idle');
@@ -730,7 +787,7 @@ export function Library() {
 
           const loaded = await loadLibraryFromSupabase();
           if (loaded) setUploadedTracks(loaded);
-          finishUpload();
+          finishUpload(tracks.length);
         } catch (err) {
           setUploadStage('idle');
           setParseError(err instanceof Error ? err.message : 'Failed to parse Rekordbox XML');
@@ -966,11 +1023,15 @@ export function Library() {
   };
 
   const allTracks: SampleTrack[] = useMemo(
-    () => uploadedTracks ? uploadedTracks.map(toDisplayTrack) : LIBRARY_TRACKS,
+    // No sample tracks before an import: a new DJ would read them as their own library.
+    () => uploadedTracks ? uploadedTracks.map(toDisplayTrack) : [],
     [uploadedTracks]
   );
 
   const wishlistTracks = useMemo(() => allTracks.filter(t => t.wishlist), [allTracks]);
+  // Library tab with nothing imported yet: the getting-started block and upload
+  // box above are the whole page, so skip the empty table, filters and count.
+  const noLibraryTable = tab === 'library' && !uploadedTracks;
 
   const filteredRaw: LibraryTrack[] = useMemo(() => {
     const q = search.toLowerCase();
@@ -1052,6 +1113,54 @@ export function Library() {
           </div>
         </div>
 
+        {/* First run: no library yet. Frame the import as step 1 of 3 and keep the
+            demo one click away for DJs who just want to look around. */}
+        {libraryLoaded && !uploadedTracks && uploadStage === 'idle' && justImported === null && tab === 'library' && (
+          <div data-testid="library-first-run">
+            <GettingStarted progress={onboarding} hideCurrentCta="library" />
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16,
+              flexWrap:'wrap', marginBottom:20 }}>
+              <div style={{ fontFamily:SD.body, fontSize:15, color:SD.text, lineHeight:1.5, flex:'1 1 360px' }}>
+                {fromPlan
+                  ? 'Plan Set builds from your own tracks, so start here. Upload your library and your first set can be exported to your DJ software.'
+                  : 'Start here. SetLab plans sets from the tracks you own, so your set can be exported straight back to your DJ software.'}
+              </div>
+              <a href="/builder?demo=1" style={{ fontFamily:SD.mono, fontSize:12, letterSpacing:1.5,
+                textTransform:'uppercase', color:SD.textSec, textDecoration:'none',
+                borderBottom:`1px solid ${SD.borderMid}`, paddingBottom:2, whiteSpace:'nowrap' }}>
+                Try a demo set first →
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Import finished: say what happened and hand off to step 2. */}
+        {justImported !== null && uploadStage === 'idle' && (
+          <div data-testid="import-success" style={{ marginBottom:24 }}>
+            <div style={{ background:SD.greenDim, border:`1px solid ${SD.green}44`, borderRadius:4,
+              padding:'22px 26px', marginBottom:16, display:'flex', alignItems:'center',
+              justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+              <div>
+                <div style={{ fontFamily:SD.display, fontSize:28, letterSpacing:3, color:SD.green, lineHeight:1.1 }}>
+                  ✓ {justImported.toLocaleString()} TRACKS IMPORTED
+                </div>
+                <div style={{ fontFamily:SD.body, fontSize:14, color:SD.textSec, marginTop:6 }}>
+                  Your sets will now be built from your own library.
+                </div>
+              </div>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                <SDButton ghost onClick={() => setJustImported(null)} style={{ fontSize:12, padding:'10px 18px' }}>
+                  Browse Library
+                </SDButton>
+                <SDButton onClick={() => router.push('/builder')} style={{ fontSize:12, padding:'10px 22px' }}>
+                  {onboarding.hasSet ? 'Plan a Set' : 'Plan Your First Set'} →
+                </SDButton>
+              </div>
+            </div>
+            <GettingStarted progress={{ ...onboarding, hasLibrary: true }} hideCurrentCta="plan" />
+          </div>
+        )}
+
         {/* Stage tracker — shown while file is being processed */}
         {uploadStage !== 'idle' && (
           <StageTracker
@@ -1100,7 +1209,7 @@ export function Library() {
         </div>
 
         {/* Filters — hidden on Wordplay and Crates tabs */}
-        <div style={{ display: tab === 'wordplay' || tab === 'crates' ? 'none' : 'flex', gap:12, marginBottom:20, flexWrap:'wrap', alignItems:'flex-end' }}>
+        <div style={{ display: tab === 'wordplay' || tab === 'crates' || noLibraryTable ? 'none' : 'flex', gap:12, marginBottom:20, flexWrap:'wrap', alignItems:'flex-end' }}>
           <div style={{ flex:1, minWidth:240 }}>
             <SDInput value={search} onChange={setSearch}
               placeholder={tab === 'library' ? 'Search artist or title...' : 'Search wishlist...'} />
@@ -1116,7 +1225,7 @@ export function Library() {
           )}
         </div>
 
-        {tab !== 'wordplay' && tab !== 'crates' && (
+        {tab !== 'wordplay' && tab !== 'crates' && !noLibraryTable && (
           <div style={{ fontFamily:SD.mono, fontSize:12, color:SD.textMuted, marginBottom:12 }}>
             {filtered.length} track{filtered.length !== 1 ? 's' : ''}{(search || bpmMin || bpmMax) ? ' matching filters' : ''}
             {uploadedTracks && <span style={{ color:SD.accent, marginLeft:8 }}>· Your Library</span>}
@@ -1506,7 +1615,7 @@ export function Library() {
         )}
 
         {/* Rows */}
-        {tab !== 'wordplay' && tab !== 'crates' && (filtered.length === 0 ? (
+        {tab !== 'wordplay' && tab !== 'crates' && !noLibraryTable && (filtered.length === 0 ? (
           <div style={{ textAlign:'center', padding:'80px 40px' }}>
             <div style={{ fontFamily:SD.display, fontSize:48, letterSpacing:3,
               color:SD.textMuted, marginBottom:12 }}>NOTHING HERE</div>

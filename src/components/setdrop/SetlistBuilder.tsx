@@ -10,6 +10,8 @@ import { trackEvent } from '@/lib/analytics';
 import { superFamily, gigGenreLabel } from '@/lib/setdrop/genre';
 import { CURATE_HEADROOM, classifyReadiness, targetTrackCount, type ReadinessResult } from '@/lib/setdrop/readiness';
 import * as Sentry from '@sentry/nextjs';
+import { GettingStarted } from './GettingStarted';
+import type { OnboardingProgress } from '@/lib/setdrop/onboarding';
 
 // Axis context that defines the candidate pool. Mirrors the server-side axes on
 // SetlistInput (genre / era / artist / playlist).
@@ -104,7 +106,7 @@ function readinessView(
   return { ...tones[status], text };
 }
 
-export function SetlistBuilder() {
+export function SetlistBuilder({ onboarding }: { onboarding: OnboardingProgress }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
@@ -681,28 +683,50 @@ export function SetlistBuilder() {
       <div className="sd-pad-x sd-inner-pad" style={{ maxWidth:800, margin:'0 auto', padding:'48px 40px', animation:'sdFadeUp 0.5s ease both' }}>
         <PageHeader eyebrow="Setlist Builder" title="PLAN YOUR SET" subtitle="An ordered set for one gig — sequenced start to finish, with transitions and an energy arc." />
 
-        {/* Library status banner */}
-        <div style={{ marginBottom:24, padding:'12px 16px', borderRadius:3,
-          background: libraryCount ? SD.greenDim : SD.surface,
-          border:`1px solid ${libraryCount ? `${SD.green}33` : SD.border}`,
-          display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0,
-              background: libraryCount ? SD.green : SD.textMuted, display:'inline-block',
-              boxShadow: libraryCount ? `0 0 6px ${SD.green}` : 'none' }}/>
-            <span style={{ fontFamily:SD.mono, fontSize:12, color: libraryCount ? SD.text : SD.textMuted }}>
-              {libraryCount
-                ? `Building from your library — ${libraryCount.toLocaleString()} tracks`
-                : 'Demo mode — sample tracks. Import your library for a real, exportable set.'}
+        <GettingStarted progress={onboarding} variant="compact" />
+
+        {/* Library status. Demo mode is loud on purpose: a DJ without a library is
+            building from sample tracks, and the set can't be exported to their
+            DJ software. Say so before they spend three steps on the form. */}
+        {libraryCount || onboarding.hasLibrary ? (
+          <div style={{ marginBottom:24, padding:'12px 16px', borderRadius:3,
+            background: SD.greenDim, border:`1px solid ${SD.green}33`,
+            display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0,
+                background: SD.green, display:'inline-block', boxShadow: `0 0 6px ${SD.green}` }}/>
+              <span style={{ fontFamily:SD.mono, fontSize:12, color: SD.text }}>
+                {libraryCount
+                  ? `Building from your library — ${libraryCount.toLocaleString()} tracks`
+                  : 'Building from your wishlist tracks'}
+              </span>
+            </div>
+            <span onClick={() => router.push('/library')} style={{
+              fontFamily:SD.mono, fontSize:12, letterSpacing:1.5, textTransform:'uppercase',
+              color:SD.accent, cursor:'pointer', textDecoration:'underline',
+            }}>
+              Manage Library
             </span>
           </div>
-          <span onClick={() => router.push('/library')} style={{
-            fontFamily:SD.mono, fontSize:12, letterSpacing:1.5, textTransform:'uppercase',
-            color:SD.accent, cursor:'pointer', textDecoration:'underline',
-          }}>
-            {libraryCount ? 'Manage Library' : 'Upload your library →'}
-          </span>
-        </div>
+        ) : (
+          <div data-testid="demo-mode-bar" role="status" style={{ marginBottom:28, padding:'18px 20px', borderRadius:4,
+            background: SD.accentDim, border:`2px solid ${SD.accent}`,
+            display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+            <div style={{ flex:'1 1 320px', minWidth:0 }}>
+              <div style={{ fontFamily:SD.mono, fontSize:13, fontWeight:700, letterSpacing:2,
+                textTransform:'uppercase', color:SD.accent, marginBottom:6 }}>
+                Demo mode · sample tracks, not yours
+              </div>
+              <div style={{ fontFamily:SD.body, fontSize:14, color:SD.text, lineHeight:1.5 }}>
+                You can try the planner here, but exporting a set to Serato or Rekordbox needs your own library.
+                Upload it first and your set is built from tracks you actually own.
+              </div>
+            </div>
+            <SDButton onClick={() => router.push('/library')} style={{ fontSize:12, padding:'10px 20px', flexShrink:0 }}>
+              Upload Your Library
+            </SDButton>
+          </div>
+        )}
 
         <StepIndicator />
 

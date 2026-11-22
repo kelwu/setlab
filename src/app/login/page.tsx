@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { SD } from '@/lib/setdrop/constants';
 import { BRAND } from '@/lib/brand';
 import { trackEvent } from '@/lib/analytics';
+import { newAccountDestination } from '@/lib/setdrop/onboarding';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -60,7 +61,8 @@ export default function LoginPage() {
       else if (data.session) {
         trackEvent.signUp('email');
         fetch('/api/auth/welcome', { method: 'POST' }).catch(() => {});
-        router.push(redirectPath);
+        // Upload-first: a new account has no library, so start on import.
+        router.push(newAccountDestination(redirectPath));
       }
       else { trackEvent.signUp('email'); setMessage('Check your email for a confirmation link.'); }
     } else {
