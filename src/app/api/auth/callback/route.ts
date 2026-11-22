@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { loopsCreateContact, loopsSendEvent, updateLoopsContact } from '@/lib/email/loops'
 import { recordFirstTouch } from '@/lib/acquisition-server'
 import { FIRST_TOUCH_COOKIE, HEARD_ABOUT_MAX_ACCOUNT_AGE_MS } from '@/lib/acquisition'
+import { newAccountDestination } from '@/lib/setdrop/onboarding'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -52,7 +53,10 @@ export async function GET(request: Request) {
         await recordFirstTouch(data.user.id, cookieStore.get(FIRST_TOUCH_COOKIE)?.value);
       }
 
-      const base = safeNext ?? '/dashboard';
+      // Upload-first: a brand-new account has no library yet, so the hub pages
+      // (dashboard, Plan Set) would only offer demo tracks. Start on import instead.
+      const requested = safeNext ?? '/dashboard';
+      const base = isNewUser ? newAccountDestination(requested) : requested;
       const dest = isNewUser
         ? `${origin}${base}${base.includes('?') ? '&' : '?'}new_user=1`
         : `${origin}${base}`;

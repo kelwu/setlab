@@ -38,7 +38,7 @@ export const trackEvent = {
   // land on import but never find/select their library file). started/uploaded/
   // failed then cover the picked-a-file → success/failure legs, with `reason`
   // pinpointing which throw site killed a failed import.
-  libraryImportViewed(djSoftware: 'serato' | 'rekordbox') {
+  libraryImportViewed(djSoftware: 'serato' | 'rekordbox' | 'unpicked') {
     track('library_import_viewed', { dj_software: djSoftware });
   },
   libraryUploadStarted(djSoftware: 'serato' | 'rekordbox') {
