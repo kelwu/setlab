@@ -54,6 +54,7 @@ export interface ReadinessCounts {
   usable: number;      // combined-pool survivors — tracks passing every active axis (genre/era/artist)
   withYear: number;    // of the combined pool, how many carry a non-null release year (era coverage)
   poolTotal: number;   // library tracks scanned before genre scoring (base pool after era/artist filters)
+  untagged?: number;   // of the combined pool, tracks with no usable genre tag but a BPM (placed by tempo)
 }
 
 export interface ReadinessResult {
@@ -97,7 +98,10 @@ export function classifyReadiness(
   const { genreActive = true, eraActive = false } = opts;
   let status: ReadinessStatus;
 
-  if ((genreActive && !gigSuperIsOther && counts.superFamily < MIN_SUPERFAMILY_TRACKS) || counts.usable < target) {
+  // Untagged tracks with a BPM count toward the super-family floor, mirroring the
+  // pipeline: they can't be ruled out, and the set's tempo window places them.
+  const familyPool = counts.superFamily + (counts.untagged ?? 0);
+  if ((genreActive && !gigSuperIsOther && familyPool < MIN_SUPERFAMILY_TRACKS) || counts.usable < target) {
     status = 'red';
   } else if (
     counts.usable < target * CURATE_HEADROOM ||

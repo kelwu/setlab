@@ -796,6 +796,7 @@ export async function runSetlistPipeline(
     let superFamilyCount = 0;
     let poolCount = 0;      // tracks passing all active axes (genre-not-off, era, artist)
     let poolWithYear = 0;   // of the combined pool, how many carry a release year
+    let untaggedCount = 0;  // of the combined pool, tracks with no usable genre tag (placed by BPM)
     for (const t of pool) {
       if (t.isWishlist) continue;
       if (genreActive) {
@@ -812,6 +813,7 @@ export async function runSetlistPipeline(
         // No genre AND no BPM: nothing places it in the gig — filterTracksForGig
         // drops these, so don't let them prop up the floor either.
         if (t.bpm <= 0 && m.tier === 'unknown') continue;
+        if (m.tier === 'unknown') untaggedCount++;
       }
       poolCount++;
       if (t.year != null) poolWithYear++;
@@ -831,10 +833,17 @@ export async function runSetlistPipeline(
       }
     } else {
       // Genre super-family floor: fail fast if the library can't support the gig's
-      // super-family at all (e.g. Trance with an all-hip-hop library).
-      if (genreActive && gigSuper !== 'other' && superFamilyCount < MIN_SUPERFAMILY_TRACKS) {
+      // super-family at all (e.g. Trance with an all-hip-hop library). Untagged
+      // tracks with a BPM count toward it: they can't be ruled out, and the tempo
+      // gate in filterTracksForGig places them. Counting only tagged tracks
+      // refused libraries that are mostly untagged (or tagged with a record-pool
+      // name) even when they had hundreds of tracks at the right tempo.
+      if (genreActive && gigSuper !== 'other' && superFamilyCount + untaggedCount < MIN_SUPERFAMILY_TRACKS) {
+        const untaggedPart = untaggedCount
+          ? ` and ${untaggedCount} untagged track${untaggedCount === 1 ? '' : 's'} with a BPM`
+          : '';
         throw new SetlistInputError(
-          `Not enough tracks for a ${input.primaryGenre} set — your library has only ${superFamilyCount} ${gigSuper} track${superFamilyCount === 1 ? '' : 's'}. Import more ${input.primaryGenre} (or related) music and try again.`,
+          `Not enough tracks for a ${input.primaryGenre} set — your library has only ${superFamilyCount} ${gigSuper} track${superFamilyCount === 1 ? '' : 's'}${untaggedPart}. Import more ${input.primaryGenre} (or related) music, or add genre tags to your tracks, and try again.`,
         );
       }
       // Combined-pool floor: even if the genre is well-stocked, the era/artist
@@ -850,6 +859,18 @@ export async function runSetlistPipeline(
     onProgress?.({ type: 'step', step: 3, message: 'Selecting and sequencing tracks...' });
     const filtered = filterTracksForGig(pool, blueprint, input, affinity);
 
+    // The floors above count untagged tracks by BPM alone. If the set's tempo
+    // window still leaves almost nothing, refuse with the real reason rather than
+    // hand the selector an empty pool (which surfaces as a generic error).
+    const usableCount = filtered.filter(t => !t.isWishlist).length;
+    if (genreActive && usableCount < Math.min(target, 8)) {
+      const lo = Math.min(...blueprint.phases.map(p => p.bpmRange.min));
+      const hi = Math.max(...blueprint.phases.map(p => p.bpmRange.max));
+      throw new SetlistInputError(
+        `Only ${usableCount} track${usableCount === 1 ? '' : 's'} in ${poolDescription(input)} fit the ${lo}–${hi} BPM range this set needs. Import more ${input.primaryGenre} music or add genre tags to your tracks, or try a different genre.`,
+      );
+    }
+
     const reviewed = await runSelectorReviewer(input, filtered, blueprint, intel, recentlyPlayed, affinity, signal, onUsage);
 
     onProgress?.({ type: 'step', step: 4, message: 'Reviewing transitions and flow...' });
@@ -858,9 +879,20 @@ export async function runSetlistPipeline(
     // leans on adjacent genres rather than pretend it's pure. (Only when a genre axis
     // is active; no genre gate in playlist mode.)
     let reviewNotes = reviewed.reviewNotes;
+    // Tracks with no usable genre tag that made the set (picked by tempo and key).
+    const untaggedKeys = new Set(
+      genreActive
+        ? pool
+          .filter(t => gigGenreMatch(input.primaryGenre!, input.secondaryGenre, t.genre ?? '', t.lastfmTags ?? []).tier === 'unknown')
+          .map(t => songKey(t.artist, t.title))
+        : [],
+    );
+    const untaggedInSet = reviewed.tracks.filter(t => untaggedKeys.has(songKey(t.artist, t.title))).length;
     if (!playlistMode && genreActive && exactGenreCount < reviewed.tracks.length) {
       const label = gigGenreLabel(input.primaryGenre!, input.secondaryGenre);
-      reviewNotes += `\n\nNote: your library has only ${exactGenreCount} ${label} track${exactGenreCount === 1 ? '' : 's'}, so this set is built largely from adjacent ${gigSuper} genres. Import more ${label} for a truer set.`;
+      reviewNotes += untaggedInSet > 0
+        ? `\n\nNote: your library has only ${exactGenreCount} track${exactGenreCount === 1 ? '' : 's'} tagged ${label}, so ${untaggedInSet} of these picks are untagged tracks matched by tempo and key. Add genre tags (or import more ${label}) for a truer set.`
+        : `\n\nNote: your library has only ${exactGenreCount} ${label} track${exactGenreCount === 1 ? '' : 's'}, so this set is built largely from adjacent ${gigSuper} genres. Import more ${label} for a truer set.`;
     }
     // Parallel honesty for the era axis: if much of the pool lacked release-year data,
     // the era filter only saw the tracks we could date.
