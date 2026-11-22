@@ -175,7 +175,6 @@ class ImportError extends Error {
 
 const SERATO_BLUE = '#1F6BFF';
 const SERATO_BLUE_DIM = 'rgba(31,107,255,0.10)';
-const SERATO_BLUE_BORDER = 'rgba(31,107,255,0.35)';
 
 function UploadZone({
   onFile, dragOver, setDragOver, parseError, uploadMode, setUploadMode,
@@ -270,12 +269,12 @@ function UploadZone({
           onClick={() => setUploadMode('db')}
           style={{
             background: uploadMode === 'db' ? SERATO_BLUE_DIM : SD.surface2,
-            border: uploadMode === 'db' ? `2px solid ${SERATO_BLUE}` : `2px solid ${SERATO_BLUE_BORDER}`,
+            border: uploadMode === 'db' ? `2px solid ${SERATO_BLUE}` : `2px solid ${SD.borderMid}`,
             borderRadius:4, padding:'20px 16px', cursor:'pointer',
             textAlign:'center', transition:'all .15s',
           }}
           onMouseEnter={e => { if (uploadMode !== 'db') e.currentTarget.style.borderColor = SERATO_BLUE; }}
-          onMouseLeave={e => { if (uploadMode !== 'db') e.currentTarget.style.borderColor = SERATO_BLUE_BORDER; }}
+          onMouseLeave={e => { if (uploadMode !== 'db') e.currentTarget.style.borderColor = SD.borderMid; }}
         >
           <div style={{
             fontFamily:SD.display, fontSize:22, letterSpacing:3,
