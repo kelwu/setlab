@@ -576,7 +576,8 @@ async function loadLibraryFromSupabase(): Promise<LibraryTrack[] | null> {
   return [...seratoTracks, ...wishlistTracks];
 }
 
-export function Library({ onboarding, fromPlan = false, newUser = false }: {
+export function Library({ onboarding, fromPlan = false, newUser = false, mockImported }: {
+  mockImported?: number;
   onboarding: OnboardingProgress;
   /** Sent here from Plan Set because there's no library yet. */
   fromPlan?: boolean;
@@ -610,7 +611,7 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
   }, []);
   // Set when an import finishes, so the screen can say what happened and point
   // at step 2 instead of silently dropping the DJ into a track table.
-  const [justImported, setJustImported] = useState<number | null>(null);
+  const [justImported, setJustImported] = useState<number | null>(mockImported ?? null);
   useEffect(() => {
     if (!newUser) return;
     trackEvent.signUp('google');
