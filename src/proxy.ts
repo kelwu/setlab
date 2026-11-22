@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { FIRST_TOUCH_COOKIE, FIRST_TOUCH_MAX_AGE_S, buildFirstTouch } from '@/lib/acquisition'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -26,7 +27,32 @@ export async function proxy(request: NextRequest) {
   // Refresh session — must be called before any auth checks
   const { data: { user } } = await supabase.auth.getUser()
 
+  // First-touch attribution: on a visitor's first full page view, remember the
+  // UTM params, external referrer host, and landing path. Set once, never
+  // overwritten; copied onto the user row at signup (see recordFirstTouch).
+  if (!user && isFirstPageView(request)) {
+    const firstTouch = buildFirstTouch(request.nextUrl, request.headers.get('referer'))
+    supabaseResponse.cookies.set(FIRST_TOUCH_COOKIE, JSON.stringify(firstTouch), {
+      maxAge: FIRST_TOUCH_MAX_AGE_S,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: request.nextUrl.protocol === 'https:',
+      path: '/',
+    })
+  }
+
   return supabaseResponse
+}
+
+function isFirstPageView(request: NextRequest): boolean {
+  if (request.cookies.has(FIRST_TOUCH_COOKIE)) return false
+  if (request.method !== 'GET') return false
+  if (request.nextUrl.pathname.startsWith('/api/')) return false
+  // Skip client-side navigations and prefetches — only a real document load
+  // carries the external Referer.
+  if (request.headers.get('rsc') || request.headers.get('next-router-prefetch')) return false
+  if (request.headers.get('purpose') === 'prefetch') return false
+  return (request.headers.get('accept') ?? '').includes('text/html')
 }
 
 export const config = {

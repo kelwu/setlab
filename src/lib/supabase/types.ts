@@ -15,8 +15,12 @@ export type Database = {
           subscription_tier: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          heard_about: string | null
+          heard_about_other: string | null
+          heard_about_at: string | null
+          first_touch: Record<string, string> | null
         }
-        Insert: Omit<Database['public']['Tables']['users']['Row'], 'id' | 'created_at' | 'subscription_tier'> & { id?: string; created_at?: string; subscription_tier?: string }
+        Insert: Omit<Database['public']['Tables']['users']['Row'], 'id' | 'created_at' | 'subscription_tier' | 'heard_about' | 'heard_about_other' | 'heard_about_at' | 'first_touch'> & { id?: string; created_at?: string; subscription_tier?: string; heard_about?: string | null; heard_about_other?: string | null; heard_about_at?: string | null; first_touch?: Record<string, string> | null }
         Update: Partial<Database['public']['Tables']['users']['Insert']>
       }
       serato_libraries: {

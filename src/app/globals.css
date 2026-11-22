@@ -195,6 +195,7 @@ body::after {
   .sd-hide-mobile { display: none !important; }
   .sd-fab { bottom: 78px !important; }
   .sd-fab-panel { bottom: 138px !important; }
+  .sd-heard-card { left: 12px !important; bottom: 70px !important; }
 }
 
 /* Footer nav links */

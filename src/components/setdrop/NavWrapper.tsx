@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { Nav } from './shared';
+import { HeardAboutPrompt } from './HeardAboutPrompt';
 
 const HIDE_NAV_PREFIXES = ['/', '/login', '/set/', '/privacy', '/terms', '/invoice', '/help', '/serato-to-rekordbox'];
 
@@ -11,5 +12,10 @@ export function NavWrapper() {
     p === '/' ? pathname === '/' : pathname.startsWith(p)
   );
   if (hide) return null;
-  return <Nav />;
+  return (
+    <>
+      <Nav />
+      <HeardAboutPrompt />
+    </>
+  );
 }

@@ -28,6 +28,10 @@ export const trackEvent = {
   signUp(method: 'email' | 'google') {
     track('sign_up', { method });
   },
+  // Answer to the optional "How did you hear about SetLab?" prompt (or 'skipped').
+  heardAbout(source: string) {
+    track('heard_about', { source });
+  },
 
   // — Library import — `viewed` fires when the import screen mounts, BEFORE a
   // file is picked, so the funnel can see the pre-file-pick drop (users who
