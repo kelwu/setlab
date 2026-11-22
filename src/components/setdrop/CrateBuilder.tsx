@@ -15,7 +15,8 @@ import {
 } from '@/lib/setdrop/rekordbox-export';
 import type { SetlistTrack, LibraryTrack } from '@/lib/agents/types';
 import type { CrateTrack } from '@/lib/crates/types';
-import { gateExport } from '@/lib/setdrop/export-gate';
+import { gateExport, type ExportGateResult } from '@/lib/setdrop/export-gate';
+import { ExportQuotaNote } from './UpgradeButton';
 import { trackEvent } from '@/lib/analytics';
 import { CueExportToggle, useCueExport } from './cues/CueExportToggle';
 
@@ -131,6 +132,7 @@ export function CrateBuilder() {
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportQuota, setExportQuota] = useState<Pick<ExportGateResult, 'quotaNote' | 'lastFree'> | null>(null);
   const [importGuide, setImportGuide] = useState<{ platform: ImportPlatform; matched: number; total: number; cues?: number } | null>(null);
   const cueExport = useCueExport();
   const [warning, setWarning] = useState<string | null>(null);
@@ -253,7 +255,8 @@ export function CrateBuilder() {
     const paths = activeCrate.tracks.map(t => t.filePath).filter((p): p is string => Boolean(p) && isLocalFilePath(p));
     if (!paths.length) { setError('No local files to export — streaming tracks (SoundCloud/TIDAL/etc.) can’t export, and your library may need re-sync'); return; }
     const gate = await gateExport('crate', activeCrate.id, 'serato-crate');
-    if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
+    if (!gate.ok) { setExportQuota(null); setError(gate.message ?? 'Export limit reached'); return; }
+    setExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     const data = buildCrate(paths);
     downloadCrate(data, activeCrate.name);
     setError(null);
@@ -268,7 +271,8 @@ export function CrateBuilder() {
     const { xml, matched, withCues } = buildRekordboxXml(activeCrate.name, setlist, library, { cues });
     if (!matched) { setError('No file paths — library may need re-sync'); return; }
     const gate = await gateExport('crate', activeCrate.id, 'rekordbox-xml');
-    if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
+    if (!gate.ok) { setExportQuota(null); setError(gate.message ?? 'Export limit reached'); return; }
+    setExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     downloadRekordboxXml(xml, activeCrate.name);
     if (cues) trackEvent.cueExportCompleted('crate', matched, withCues);
     setError(null);
@@ -282,7 +286,8 @@ export function CrateBuilder() {
     const { m3u, matched } = buildM3u(activeCrate.name, setlist, library);
     if (!matched) { setError('No file paths — library may need re-sync'); return; }
     const gate = await gateExport('crate', activeCrate.id, 'm3u');
-    if (!gate.ok) { setError(gate.message ?? 'Export limit reached'); return; }
+    if (!gate.ok) { setExportQuota(null); setError(gate.message ?? 'Export limit reached'); return; }
+    setExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     downloadM3u(m3u, activeCrate.name);
     setError(null);
     setImportGuide({ platform: 'rekordbox-m3u', matched, total: activeCrate.tracks.length });
@@ -611,6 +616,8 @@ export function CrateBuilder() {
           </div>
 
           <CueExportToggle state={cueExport} source="crate" />
+
+          <ExportQuotaNote note={exportQuota?.quotaNote} lastFree={exportQuota?.lastFree} source="crate_last_free_export" />
 
           {importGuide && (
             <ImportInstructions

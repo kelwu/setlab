@@ -11,7 +11,8 @@ import { parseRekordboxLibrary, type RekordboxPlaylist } from '@/lib/setdrop/rek
 import { buildCrate, downloadCrate } from '@/lib/setdrop/serato-crate';
 import { buildRekordboxXml, buildM3u, downloadRekordboxXml, downloadM3u, matchExportTracks } from '@/lib/setdrop/rekordbox-export';
 import { CueExportToggle, useCueExport } from './cues/CueExportToggle';
-import { gateExport } from '@/lib/setdrop/export-gate';
+import { gateExport, type ExportGateResult } from '@/lib/setdrop/export-gate';
+import { ExportQuotaNote } from './UpgradeButton';
 import { SDButton, SDInput, ConfidenceBadge, EnergyDot, Tabs } from './shared';
 
 // ─── Crate types ──────────────────────────────────────────────────────────────
@@ -588,6 +589,7 @@ export function Library() {
   const [crateGenerating, setCrateGenerating] = useState(false);
   const [crateError, setCrateError] = useState<string | null>(null);
   const [crateExportError, setCrateExportError] = useState<string | null>(null);
+  const [crateExportQuota, setCrateExportQuota] = useState<Pick<ExportGateResult, 'quotaNote' | 'lastFree'> | null>(null);
   const cueExport = useCueExport();
   const [activeCrate, setActiveCrate] = useState<ActiveCrate | null>(null);
 
@@ -912,7 +914,8 @@ export function Library() {
     const paths = crate.tracks.map(t => t.filePath).filter((p): p is string => Boolean(p));
     if (!paths.length) { alert('No file paths — library enrichment may be needed.'); return; }
     const gate = await gateExport('crate', crate.id, 'serato-crate');
-    if (!gate.ok) { setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    if (!gate.ok) { setCrateExportQuota(null); setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    setCrateExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     setCrateExportError(null);
     downloadCrate(buildCrate(paths), crate.name);
   };
@@ -929,7 +932,8 @@ export function Library() {
     const cues = await cueExport.lookup(matchExportTracks(pseudoSetlist, pseudoLibrary));
     const { xml, matched, withCues } = buildRekordboxXml(crate.name, pseudoSetlist, pseudoLibrary, { cues });
     const gate = await gateExport('crate', crate.id, 'rekordbox-xml');
-    if (!gate.ok) { setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    if (!gate.ok) { setCrateExportQuota(null); setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    setCrateExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     setCrateExportError(null);
     downloadRekordboxXml(xml, crate.name);
     if (cues) trackEvent.cueExportCompleted('crate', matched, withCues);
@@ -946,7 +950,8 @@ export function Library() {
     }));
     const { m3u } = buildM3u(crate.name, pseudoSetlist, pseudoLibrary);
     const gate = await gateExport('crate', crate.id, 'm3u');
-    if (!gate.ok) { setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    if (!gate.ok) { setCrateExportQuota(null); setCrateExportError(gate.message ?? 'Export limit reached'); return; }
+    setCrateExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     setCrateExportError(null);
     downloadM3u(m3u, crate.name);
   };
@@ -1396,12 +1401,13 @@ export function Library() {
                     <SDButton ghost onClick={() => exportCrateM3u(activeCrate)} style={{ fontSize:11, padding:'5px 12px' }}>
                       M3U
                     </SDButton>
-                    <SDButton ghost onClick={() => { setActiveCrate(null); setCrateExportError(null); }} style={{ fontSize:11, padding:'5px 12px', color:SD.textMuted }}>
+                    <SDButton ghost onClick={() => { setActiveCrate(null); setCrateExportError(null); setCrateExportQuota(null); }} style={{ fontSize:11, padding:'5px 12px', color:SD.textMuted }}>
                       Close
                     </SDButton>
                   </div>
                 </div>
                 <CueExportToggle state={cueExport} source="crate" />
+                <ExportQuotaNote note={crateExportQuota?.quotaNote} lastFree={crateExportQuota?.lastFree} source="library_last_free_export" />
                 {crateExportError && (
                   <div style={{
                     marginBottom:12, padding:'10px 14px',
