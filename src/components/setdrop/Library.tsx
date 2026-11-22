@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { BRAND } from '@/lib/brand';
-import { SD, LIBRARY_TRACKS, SampleTrack, ConfidenceStatus } from '@/lib/setdrop/constants';
+import { SD, SampleTrack, ConfidenceStatus } from '@/lib/setdrop/constants';
 import { trackEvent, type LibraryUploadFailReason } from '@/lib/analytics';
 import { LibraryTrack, SetlistTrack } from '@/lib/agents/types';
 import { parseRekordboxLibrary, type RekordboxPlaylist } from '@/lib/setdrop/rekordbox-parser';
@@ -1023,11 +1023,15 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
   };
 
   const allTracks: SampleTrack[] = useMemo(
-    () => uploadedTracks ? uploadedTracks.map(toDisplayTrack) : LIBRARY_TRACKS,
+    // No sample tracks before an import: a new DJ would read them as their own library.
+    () => uploadedTracks ? uploadedTracks.map(toDisplayTrack) : [],
     [uploadedTracks]
   );
 
   const wishlistTracks = useMemo(() => allTracks.filter(t => t.wishlist), [allTracks]);
+  // Library tab with nothing imported yet: the getting-started block and upload
+  // box above are the whole page, so skip the empty table, filters and count.
+  const noLibraryTable = tab === 'library' && !uploadedTracks;
 
   const filteredRaw: LibraryTrack[] = useMemo(() => {
     const q = search.toLowerCase();
@@ -1205,7 +1209,7 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
         </div>
 
         {/* Filters — hidden on Wordplay and Crates tabs */}
-        <div style={{ display: tab === 'wordplay' || tab === 'crates' ? 'none' : 'flex', gap:12, marginBottom:20, flexWrap:'wrap', alignItems:'flex-end' }}>
+        <div style={{ display: tab === 'wordplay' || tab === 'crates' || noLibraryTable ? 'none' : 'flex', gap:12, marginBottom:20, flexWrap:'wrap', alignItems:'flex-end' }}>
           <div style={{ flex:1, minWidth:240 }}>
             <SDInput value={search} onChange={setSearch}
               placeholder={tab === 'library' ? 'Search artist or title...' : 'Search wishlist...'} />
@@ -1221,7 +1225,7 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
           )}
         </div>
 
-        {tab !== 'wordplay' && tab !== 'crates' && (
+        {tab !== 'wordplay' && tab !== 'crates' && !noLibraryTable && (
           <div style={{ fontFamily:SD.mono, fontSize:12, color:SD.textMuted, marginBottom:12 }}>
             {filtered.length} track{filtered.length !== 1 ? 's' : ''}{(search || bpmMin || bpmMax) ? ' matching filters' : ''}
             {uploadedTracks && <span style={{ color:SD.accent, marginLeft:8 }}>· Your Library</span>}
@@ -1611,7 +1615,7 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
         )}
 
         {/* Rows */}
-        {tab !== 'wordplay' && tab !== 'crates' && (filtered.length === 0 ? (
+        {tab !== 'wordplay' && tab !== 'crates' && !noLibraryTable && (filtered.length === 0 ? (
           <div style={{ textAlign:'center', padding:'80px 40px' }}>
             <div style={{ fontFamily:SD.display, fontSize:48, letterSpacing:3,
               color:SD.textMuted, marginBottom:12 }}>NOTHING HERE</div>
