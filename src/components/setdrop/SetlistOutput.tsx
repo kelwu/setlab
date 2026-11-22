@@ -8,6 +8,7 @@ import { buildCrate, downloadCrate } from '@/lib/setdrop/serato-crate';
 import { buildRekordboxXml, downloadRekordboxXml, buildM3u, downloadM3u, matchExportTracks } from '@/lib/setdrop/rekordbox-export';
 import { isLocalFilePath } from '@/lib/setdrop/file-path';
 import { createClient } from '@/lib/supabase/client';
+import { readLibraryCache, writeLibraryCache } from '@/lib/setdrop/library-cache';
 import { SDButton } from './shared';
 import { SetView, toDisplayTracks, type ResolvedUrls } from './SetView';
 import { ImportInstructions, type ImportPlatform } from './ImportInstructions';
@@ -190,17 +191,16 @@ export function SetlistOutput() {
     }
   };
 
-  const getLibrary = (): LibraryTrack[] => {
-    try {
-      const raw = localStorage.getItem('sd_library');
-      return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
+  // This account's cached library only; never another account's on a shared browser.
+  const getLibrary = async (): Promise<LibraryTrack[]> => {
+    const { data: { user } } = await createClient().auth.getUser();
+    return user ? readLibraryCache<LibraryTrack>(user.id) ?? [] : [];
   };
 
   const handleExportCrate = async () => {
     if (!setlist) return;
     setImportGuide(null);
-    let library = getLibrary();
+    let library = await getLibrary();
 
     // If localStorage is empty or stale (no file paths), fetch fresh from Supabase
     if (!library.length || !library.some(t => t.filePath)) {
@@ -208,7 +208,7 @@ export function SetlistOutput() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: lib } = await supabase.from('serato_libraries').select('id').eq('user_id', user.id).single();
+          const { data: lib } = await supabase.from('serato_libraries').select('id').eq('user_id', user.id).maybeSingle();
           if (lib) {
             const PAGE = 1000;
             let offset = 0;
@@ -231,7 +231,7 @@ export function SetlistOutput() {
             }
             if (allRows.length) {
               library = allRows;
-              localStorage.setItem('sd_library', JSON.stringify(library));
+              writeLibraryCache(user.id, library);
             }
           }
         }
@@ -263,7 +263,7 @@ export function SetlistOutput() {
   const handleExportRekordbox = async () => {
     if (!setlist) return;
     setImportGuide(null);
-    let library = getLibrary();
+    let library = await getLibrary();
 
     // If localStorage is empty or stale, fetch fresh from Supabase
     if (!library.length || !library.some(t => t.filePath)) {
@@ -271,7 +271,7 @@ export function SetlistOutput() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: lib } = await supabase.from('serato_libraries').select('id').eq('user_id', user.id).single();
+          const { data: lib } = await supabase.from('serato_libraries').select('id').eq('user_id', user.id).maybeSingle();
           if (lib) {
             const PAGE = 1000;
             let offset = 0;
@@ -294,7 +294,7 @@ export function SetlistOutput() {
             }
             if (allRows.length) {
               library = allRows;
-              localStorage.setItem('sd_library', JSON.stringify(library));
+              writeLibraryCache(user.id, library);
             }
           }
         }
@@ -320,14 +320,14 @@ export function SetlistOutput() {
   const handleExportM3u = async () => {
     if (!setlist) return;
     setImportGuide(null);
-    let library = getLibrary();
+    let library = await getLibrary();
 
     if (!library.length || !library.some(t => t.filePath)) {
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: lib } = await supabase.from('serato_libraries').select('id').eq('user_id', user.id).single();
+          const { data: lib } = await supabase.from('serato_libraries').select('id').eq('user_id', user.id).maybeSingle();
           if (lib) {
             const PAGE = 1000;
             let offset = 0;
@@ -350,7 +350,7 @@ export function SetlistOutput() {
             }
             if (allRows.length) {
               library = allRows;
-              localStorage.setItem('sd_library', JSON.stringify(library));
+              writeLibraryCache(user.id, library);
             }
           }
         }
