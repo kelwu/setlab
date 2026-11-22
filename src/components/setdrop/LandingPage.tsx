@@ -451,7 +451,7 @@ export function LandingPage() {
               Convert My Library
             </SDButton>
             <SDButton ghost href="/serato-to-rekordbox" style={{ fontSize:13, padding:'14px 32px' }}>
-              How It Works
+              Serato to Rekordbox Guide
             </SDButton>
           </div>
         </div>
@@ -653,7 +653,7 @@ export function LandingPage() {
                 ['How It Works', '#how-it-works'],
                 ['Demo',         '#demo'],
                 ['Pricing',      '#pricing'],
-                ['Serato → Rekordbox', '/serato-to-rekordbox'],
+                ['Serato to Rekordbox', '/serato-to-rekordbox'],
               ] as [string, string][]).map(([label, href]) => (
                 <a key={label} href={href} className="sd-footer-link"
                   style={{ fontFamily:SD.mono, fontSize:13 }}>

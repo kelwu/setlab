@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { BRAND } from '@/lib/brand';
 import { HELP_GUIDES } from '@/lib/setdrop/help-guides';
 import { S, HelpTopBar } from './help-ui';
@@ -63,6 +64,12 @@ export default function HelpIndexPage() {
         </div>
 
         <p style={{ fontFamily: S.mono, fontSize: 12, color: S.textMuted, lineHeight: 1.8, marginTop: 40 }}>
+          Moving from Serato to Rekordbox? The{' '}
+          <Link href="/serato-to-rekordbox" style={{ color: S.accent, textDecoration: 'none' }}>Serato to Rekordbox converter</Link>{' '}
+          brings your hot cues, loops and crates across for free.
+        </p>
+
+        <p style={{ fontFamily: S.mono, fontSize: 12, color: S.textMuted, lineHeight: 1.8, marginTop: 16 }}>
           Still stuck? Tap the chat bubble in the app, or email{' '}
           <a href="mailto:kelcwu@gmail.com" style={{ color: S.accent, textDecoration: 'none' }}>kelcwu@gmail.com</a>.
         </p>
