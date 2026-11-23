@@ -237,3 +237,31 @@ export function gigGenreLabel(primaryGenre: string, secondaryGenre?: string | nu
   const s = secondaryGenre?.trim();
   return s && s.toLowerCase() !== primaryGenre.trim().toLowerCase() ? `${primaryGenre} or ${s}` : primaryGenre;
 }
+
+// Builder genre for a canonical token, e.g. "hip-hop" → "Hip-Hop". First listing wins.
+const TOKEN_BUILDER_GENRE: Record<string, string> = {};
+for (const grp of GENRE_GROUPS) {
+  for (const g of grp.genres) {
+    const c = canonToken(g);
+    if (!(c in TOKEN_BUILDER_GENRE)) TOKEN_BUILDER_GENRE[c] = g;
+  }
+}
+
+/**
+ * The Plan Set genre that best fits a library, from its raw genre counts (as
+ * get_top_genres returns them). Raw strings are mapped onto the builder's own
+ * genre list and their counts summed, so "Hip Hop" and "Hiphop" both count
+ * toward Hip-Hop. Strings that don't map to a builder genre ("Other", a record
+ * pool name, "Dance") are ignored. Returns null when nothing maps.
+ */
+export function suggestGigGenre(rows: { genre: string | null; track_count: number | string }[]): string | null {
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    const g = r.genre ? TOKEN_BUILDER_GENRE[canonToken(r.genre)] : undefined;
+    if (g) totals.set(g, (totals.get(g) ?? 0) + Number(r.track_count || 0));
+  }
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [g, n] of totals) if (n > bestN) { best = g; bestN = n; }
+  return best;
+}
