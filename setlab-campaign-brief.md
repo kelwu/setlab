@@ -2,7 +2,7 @@
 
 > **Purpose:** Single source of truth for writing accurate SetLab email campaigns (Loops).
 > Keep this current — update the "What's New" section whenever a feature ships.
-> Last updated: 2026-11-12.
+> Last updated: 2026-11-23.
 
 ---
 
@@ -98,6 +98,8 @@ Lead with the **benefit**, support with the **feature**.
 ## 5. What's New (changelog — use for feature-announcement campaigns)
 
 Most recent first. Convert these into "we just shipped…" emails.
+
+- **See your exports left — and go Pro in one tap** — after every export, free users now see exactly how many exports remain this month (shown on the setlist page, crate builder, and library). Hit the last one and an "Upgrade to Pro — $12/mo" button appears right there, going straight to checkout. *(Makes the natural upgrade moment impossible to miss. Beta testers are reported as unlimited.)*
 
 - **Tell SetLab when your gig is** — Plan Set now has an optional gig date. Add one and the gig shows up in a countdown on your dashboard ("12 days to go"), and after the night it moves to your past gigs so you can note what worked. New DJs also land in Plan Set with their library's biggest genre and a 60-minute set already filled in. *(Gig dates are the hook for future "your gig is this week" and post-gig emails; none are sent yet. Also fixed: gig dates could show a day early on US clocks, and with several upcoming gigs the dashboard could show the farthest one instead of the next.)*
 - **Start with your own music** — new accounts now open on the library page with a short 3-step checklist (upload your library, plan a set, export to your DJ software) that ticks off as you go. Pick Serato or Rekordbox and SetLab shows exactly which file to grab; once the import finishes, one click takes you to your first set. Plan Set no longer quietly builds from sample tracks before you've imported (a demo set is still one click away, clearly marked). *(Good for re-engaging signups who never imported: "your first set is two steps away.")*
