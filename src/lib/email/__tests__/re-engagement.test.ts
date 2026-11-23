@@ -28,6 +28,9 @@ describe('decide', () => {
     expect(decide(cand({ priorSends: [daysAgo(10)] }), NOW).skip).toBe('too_soon');
     expect(decide(cand({ priorSends: [daysAgo(25)] }), NOW).skip).toBeUndefined();
   });
+  it('never emails someone recorded as unsubscribed', () => {
+    expect(decide(cand({ suppressed: true }), NOW).skip).toBe('unsubscribed');
+  });
   it('never sends past the cap', () => {
     const sends = Array.from({ length: MAX_SENDS }, () => daysAgo(90));
     expect(decide(cand({ priorSends: sends }), NOW).skip).toBe('capped');

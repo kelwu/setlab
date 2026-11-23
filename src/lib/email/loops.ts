@@ -48,3 +48,25 @@ export async function updateLoopsContact(
     console.error('[Loops] contact update failed silently');
   }
 }
+
+export type LoopsContactStatus = 'subscribed' | 'unsubscribed' | 'no_contact' | 'error';
+
+/**
+ * Whether Loops will deliver campaign/workflow email to this address. `subscribed`
+ * is false once the person has unsubscribed. 'error' means we could not tell, and
+ * callers must treat that as "do not send".
+ */
+export async function loopsContactStatus(email: string): Promise<LoopsContactStatus> {
+  if (!process.env.LOOPS_API_KEY) return 'error';
+  try {
+    const res = await fetch(`${LOOPS_API}/contacts/find?email=${encodeURIComponent(email)}`, {
+      headers: headers(),
+    });
+    if (!res.ok) return 'error';
+    const body = (await res.json()) as { subscribed?: boolean }[];
+    if (!Array.isArray(body) || body.length === 0) return 'no_contact';
+    return body[0].subscribed === false ? 'unsubscribed' : 'subscribed';
+  } catch {
+    return 'error';
+  }
+}

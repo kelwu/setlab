@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { loopsSendEvent } from '@/lib/email/loops';
+import { loopsSendEvent, loopsContactStatus } from '@/lib/email/loops';
 import { decide, STAGE_EVENT, MAX_SENDS, type Candidate } from '@/lib/email/re-engagement';
 
 export const maxDuration = 60;
@@ -58,12 +58,14 @@ export async function GET(req: NextRequest) {
     // last_sign_in_at lives on auth.users, not public.users.
     const authUsers = (await listAllAuthUsers(admin)).filter(u => u.email && u.last_sign_in_at);
 
-    const [libs, sets, exps, log] = await Promise.all([
+    const [libs, sets, exps, log, supp] = await Promise.all([
       fetchAll<{ user_id: string }>(admin, 'serato_libraries', 'user_id', q => q.gt('total_tracks', 0)),
       fetchAll<{ user_id: string }>(admin, 'setlists', 'user_id'),
       fetchAll<{ user_id: string }>(admin, 'exports', 'user_id'),
       fetchAll<{ user_id: string; sent_at: string }>(admin, 're_engagement_log', 'user_id, sent_at'),
+      fetchAll<{ user_id: string }>(admin, 'email_suppressions', 'user_id'),
     ]);
+    const suppressed = new Set(supp.map(r => r.user_id));
     const withLib = new Set(libs.map(r => r.user_id));
     const setCount = new Map<string, number>();
     for (const r of sets) setCount.set(r.user_id, (setCount.get(r.user_id) ?? 0) + 1);
@@ -82,11 +84,34 @@ export async function GET(req: NextRequest) {
           exportCount: withExport.has(u.id) ? 1 : 0,
         },
         priorSends: sends.get(u.id) ?? [],
+        suppressed: suppressed.has(u.id),
       };
       return decide(c);
     });
 
-    const eligible = decisions.filter(d => !d.skip && d.stage);
+    let eligible = decisions.filter(d => !d.skip && d.stage);
+
+    // Ask Loops about each person we are about to email. Anyone who has unsubscribed is
+    // recorded and dropped. If Loops can't tell us, we don't send (fail closed).
+    let newlyUnsubscribed = 0;
+    let statusErrors = 0;
+    const checked: typeof eligible = [];
+    for (const d of eligible) {
+      const status = await loopsContactStatus(d.email);
+      if (status === 'unsubscribed') {
+        newlyUnsubscribed++;
+        if (!dryRun) {
+          await admin
+            .from('email_suppressions')
+            .upsert({ user_id: d.userId, email: d.email, reason: 'unsubscribed' });
+        }
+      } else if (status === 'error') {
+        statusErrors++;
+      } else {
+        checked.push(d);
+      }
+    }
+    eligible = checked;
     const summary = {
       cap: MAX_SENDS,
       dormantEligible: eligible.length,
@@ -96,6 +121,9 @@ export async function GET(req: NextRequest) {
       skipped: {
         capped: decisions.filter(d => d.skip === 'capped').length,
         tooSoon: decisions.filter(d => d.skip === 'too_soon').length,
+        alreadyUnsubscribed: decisions.filter(d => d.skip === 'unsubscribed').length,
+        unsubscribedInLoops: newlyUnsubscribed,
+        loopsLookupFailed: statusErrors,
       },
     };
 

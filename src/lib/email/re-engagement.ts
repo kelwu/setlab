@@ -39,9 +39,11 @@ export interface Candidate {
   activity: UserActivity;
   /** sent_at timestamps of earlier re-engagement emails to this user */
   priorSends: string[];
+  /** true once we have recorded this user as unsubscribed */
+  suppressed?: boolean;
 }
 
-export type SkipReason = 'capped' | 'too_soon' | 'active';
+export type SkipReason = 'capped' | 'too_soon' | 'active' | 'unsubscribed';
 
 export interface Decision {
   userId: string;
@@ -55,6 +57,7 @@ const DAY = 24 * 3_600_000;
 export function decide(c: Candidate, now = Date.now()): Decision {
   const stage = classifyStage(c.activity);
   const base = { userId: c.userId, email: c.email, stage };
+  if (c.suppressed) return { ...base, skip: 'unsubscribed' };
   if (Date.parse(c.lastSignInAt) > now - INACTIVE_DAYS * DAY) return { ...base, skip: 'active' };
   if (c.priorSends.length >= MAX_SENDS) return { ...base, skip: 'capped' };
   const last = c.priorSends.reduce((m, s) => Math.max(m, Date.parse(s)), 0);
