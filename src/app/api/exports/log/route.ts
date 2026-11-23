@@ -72,8 +72,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       allowed: true,
       tier,
-      limit,
+      // Beta testers bypass the limit, so report them as unlimited too.
+      limit: isBeta ? null : limit,
       used: alreadyCounted ? used : used + 1,
+      // False for a re-export of an item already counted this month (free).
+      counted: !alreadyCounted,
       resetsAt,
     });
   } catch (err) {

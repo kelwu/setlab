@@ -13,7 +13,8 @@ import { SDButton } from './shared';
 import { SetView, toDisplayTracks, type ResolvedUrls } from './SetView';
 import { ImportInstructions, type ImportPlatform } from './ImportInstructions';
 import { BRAND } from '@/lib/brand';
-import { gateExport } from '@/lib/setdrop/export-gate';
+import { gateExport, type ExportGateResult } from '@/lib/setdrop/export-gate';
+import { UpgradeButton, ExportQuotaNote } from './UpgradeButton';
 import { trackEvent } from '@/lib/analytics';
 import { CueExportToggle, useCueExport } from './cues/CueExportToggle';
 
@@ -137,6 +138,10 @@ export function SetlistOutput() {
   const [showRegen, setShowRegen] = useState(false);
   const [regenNote, setRegenNote] = useState('');
   const [crateStatus, setCrateStatus] = useState<string | null>(null);
+  // Set when an export hits the free-tier limit, so the status box shows an upgrade button.
+  const [exportLimited, setExportLimited] = useState(false);
+  // Free-tier "exports left" line shown after each successful export.
+  const [exportQuota, setExportQuota] = useState<Pick<ExportGateResult, 'quotaNote' | 'lastFree'> | null>(null);
   const [importGuide, setImportGuide] = useState<{ platform: ImportPlatform; matched: number; total: number; cues?: number } | null>(null);
   const cueExport = useCueExport();
   const [libraryOnly, setLibraryOnly] = useState(false);
@@ -253,7 +258,9 @@ export function SetlistOutput() {
       return;
     }
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'serato-crate');
-    if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
+    setExportLimited(!gate.ok && Boolean(gate.limited));
+    if (!gate.ok) { setExportQuota(null); setCrateStatus(gate.message ?? 'Export limit reached'); return; }
+    setExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     const data = buildCrate(localPaths);
     downloadCrate(data, setlist.name);
     setCrateStatus(skipped > 0 ? streamingNote(skipped) : null);
@@ -310,7 +317,9 @@ export function SetlistOutput() {
       return;
     }
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'rekordbox-xml');
-    if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
+    setExportLimited(!gate.ok && Boolean(gate.limited));
+    if (!gate.ok) { setExportQuota(null); setCrateStatus(gate.message ?? 'Export limit reached'); return; }
+    setExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     downloadRekordboxXml(xml, setlist.name);
     if (cues) trackEvent.cueExportCompleted('setlist', matched, withCues);
     setCrateStatus(skipped > 0 ? streamingNote(skipped) : null);
@@ -365,7 +374,9 @@ export function SetlistOutput() {
       return;
     }
     const gate = await gateExport('setlist', setlist.dbId ?? setlist.shareSlug, 'm3u');
-    if (!gate.ok) { setCrateStatus(gate.message ?? 'Export limit reached'); return; }
+    setExportLimited(!gate.ok && Boolean(gate.limited));
+    if (!gate.ok) { setExportQuota(null); setCrateStatus(gate.message ?? 'Export limit reached'); return; }
+    setExportQuota(gate.quotaNote ? { quotaNote: gate.quotaNote, lastFree: gate.lastFree } : null);
     downloadM3u(m3u, setlist.name);
     setCrateStatus(skipped > 0 ? streamingNote(skipped) : null);
     setImportGuide({ platform: 'rekordbox-m3u', matched, total: setlist.tracks.length });
@@ -531,10 +542,14 @@ export function SetlistOutput() {
             border: `1px solid ${crateStatus.startsWith('Downloaded') ? SD.green + '44' : SD.accent + '44'}`,
             borderRadius: 3, fontFamily: SD.mono, fontSize: 13,
             color: crateStatus.startsWith('Downloaded') ? SD.green : SD.accent,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
           }}>
-            {crateStatus}
+            <span>{crateStatus}</span>
+            {exportLimited && crateStatus.includes('Upgrade to Pro') && <UpgradeButton source="setlist_export_limit" />}
           </div>
         )}
+
+        <ExportQuotaNote note={exportQuota?.quotaNote} lastFree={exportQuota?.lastFree} source="setlist_last_free_export" />
 
         {importGuide && (
           <ImportInstructions
