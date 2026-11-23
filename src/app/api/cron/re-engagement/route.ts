@@ -62,7 +62,11 @@ export async function GET(req: NextRequest) {
       fetchAll<{ user_id: string }>(admin, 'serato_libraries', 'user_id', q => q.gt('total_tracks', 0)),
       fetchAll<{ user_id: string }>(admin, 'setlists', 'user_id'),
       fetchAll<{ user_id: string }>(admin, 'exports', 'user_id'),
-      fetchAll<{ user_id: string; sent_at: string }>(admin, 're_engagement_log', 'user_id, sent_at'),
+      // Only rows with a stage count toward the cap. Older rows came from the previous cron,
+      // whose generic event had no workflow listening in Loops, so no email actually went out.
+      fetchAll<{ user_id: string; sent_at: string }>(
+        admin, 're_engagement_log', 'user_id, sent_at', q => q.not('stage', 'is', null),
+      ),
       fetchAll<{ user_id: string }>(admin, 'email_suppressions', 'user_id'),
     ]);
     const suppressed = new Set(supp.map(r => r.user_id));
