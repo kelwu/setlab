@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { SD, CROWD_TYPES, LINEUP_SLOTS, DURATION_OPTS, DECADES, LIBRARY_TRACKS } from '@/lib/setdrop/constants';
+import { readLibraryCache } from '@/lib/setdrop/library-cache';
 import { GeneratedSetlist } from '@/lib/agents/types';
 import { SDButton, GenreCombobox, GenrePillSelector, SDInput, AgentProgress, PageHeader } from './shared';
 import { trackEvent } from '@/lib/analytics';
@@ -166,28 +167,22 @@ export function SetlistBuilder({ onboarding }: { onboarding: OnboardingProgress 
     }).catch(() => {});
   }, []);
   useEffect(() => {
-    // Try localStorage first (legacy — may not be populated after new upload flow)
-    try {
-      const raw = localStorage.getItem('sd_library');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) {
-          setLibraryCount(parsed.length);
-          setLibraryTracks(parsed.map((t: { artist: string; title: string; bpm: number; key: string }) => ({
-            artist: t.artist, title: t.title, bpm: t.bpm, key: t.key,
-          })));
-          return;
-        }
-      }
-    } catch { /* ignore */ }
-
-    // Fallback: fetch real count from Supabase (populated by the new upload flow)
+    // This account's cached library first (fills the track preview), then the
+    // real count from Supabase. The cache is per account, so a previous
+    // account's library on this browser can't show up here.
     const supabase = createClient();
-    void Promise.resolve(
-      supabase.from('serato_libraries').select('total_tracks').single()
-    ).then(({ data }) => {
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const cached = readLibraryCache<{ artist: string; title: string; bpm: number; key: string }>(user.id);
+      if (cached) {
+        setLibraryCount(cached.length);
+        setLibraryTracks(cached.map(t => ({ artist: t.artist, title: t.title, bpm: t.bpm, key: t.key })));
+        return;
+      }
+      const { data } = await supabase.from('serato_libraries').select('total_tracks').eq('user_id', user.id).maybeSingle();
       if (data?.total_tracks) setLibraryCount(data.total_tracks);
-    }).catch(() => {});
+    })().catch(() => {});
   }, []);
 
   // Live "set readiness": as the DJ picks genre + duration, check whether their

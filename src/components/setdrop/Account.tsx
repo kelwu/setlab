@@ -7,6 +7,7 @@ import { SDButton } from './shared';
 import { createClient } from '@/lib/supabase/client';
 import { BRAND } from '@/lib/brand';
 import { trackEvent } from '@/lib/analytics';
+import { clearLibraryCaches } from '@/lib/setdrop/library-cache';
 
 interface AccountProps {
   email: string;
@@ -67,6 +68,7 @@ export function Account({ email, tier, exportsUsed, limit, hasStripeCustomer, up
   const handleSignOut = async () => {
     setLoading('signout');
     const supabase = createClient();
+    clearLibraryCaches(); // the next account on this browser starts clean
     await supabase.auth.signOut();
     router.push('/login');
   };

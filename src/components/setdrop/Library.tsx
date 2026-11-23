@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { BRAND } from '@/lib/brand';
 import { SD, SampleTrack, ConfidenceStatus } from '@/lib/setdrop/constants';
+import { clearLibraryCaches, dropOtherLibraryCaches, readLibraryCache, writeLibraryCache } from '@/lib/setdrop/library-cache';
 import { trackEvent, type LibraryUploadFailReason } from '@/lib/analytics';
 import { LibraryTrack, SetlistTrack } from '@/lib/agents/types';
 import { parseRekordboxLibrary, type RekordboxPlaylist } from '@/lib/setdrop/rekordbox-parser';
@@ -505,31 +506,46 @@ function StageTracker({ stage, parsedCount, uploadMode, syncStats }: {
 // ─── Library Screen ───────────────────────────────────────────────────────────
 
 
+// Loads the signed-in user's library and keeps this browser's cache in step
+// with it. The cache is per account and only used when Supabase can't be
+// reached; an empty result from Supabase means "no library", never "use cache".
 async function loadLibraryFromSupabase(): Promise<LibraryTrack[] | null> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+  dropOtherLibraryCaches(user.id);
+  try {
+    const tracks = await fetchLibraryTracks(supabase, user.id);
+    writeLibraryCache(user.id, tracks);
+    return tracks;
+  } catch {
+    return readLibraryCache<LibraryTrack>(user.id);
+  }
+}
 
+async function fetchLibraryTracks(supabase: ReturnType<typeof createClient>, userId: string): Promise<LibraryTrack[] | null> {
   const seratoTracks: LibraryTrack[] = [];
 
-  const { data: library } = await supabase
+  const { data: library, error: libraryError } = await supabase
     .from('serato_libraries')
     .select('id')
-    .eq('user_id', user.id)
-    .single();
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (libraryError) throw libraryError;
 
   if (library) {
     // Paginate — PostgREST default cap is 1000 rows
     const PAGE = 1000;
     let offset = 0;
     while (true) {
-      const { data: page } = await supabase
+      const { data: page, error: pageError } = await supabase
         .from('serato_tracks')
         .select('id, artist, title, bpm, key, genre, file_path, lastfm_tags')
         .eq('library_id', library.id)
         .eq('in_library', true)
         .order('artist')
         .range(offset, offset + PAGE - 1);
+      if (pageError) throw pageError;
       if (!page?.length) break;
       seratoTracks.push(...page.map(t => ({
         id: t.id,
@@ -548,12 +564,13 @@ async function loadLibraryFromSupabase(): Promise<LibraryTrack[] | null> {
     }
   }
 
-  const { data: wishlistRows } = await supabase
+  const { data: wishlistRows, error: wishlistError } = await supabase
     .from('wishlist_tracks')
     .select('id, artist, title, bpm, key, genre, beatport_search_url, bpm_supreme_search_url, traxsource_search_url, djcity_search_url, lastfm_tags')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('status', 'wishlist')
     .order('added_at', { ascending: false });
+  if (wishlistError) throw wishlistError;
 
   const wishlistTracks: LibraryTrack[] = (wishlistRows ?? []).map(w => ({
     id: w.id,
@@ -648,18 +665,11 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
   const [activeCrate, setActiveCrate] = useState<ActiveCrate | null>(null);
 
   useEffect(() => {
-    // Try Supabase first, fall back to localStorage
+    // Supabase is the source of truth; the loader falls back to this account's
+    // own cache only if Supabase can't be reached.
     loadLibraryFromSupabase().then(tracks => {
-      if (tracks) {
-        setUploadedTracks(tracks);
-        localStorage.setItem('sd_library', JSON.stringify(tracks));
-      } else {
-        try {
-          const raw = localStorage.getItem('sd_library');
-          if (raw) setUploadedTracks(JSON.parse(raw));
-        } catch { /* ignore corrupted data */ }
-      }
-    }).finally(() => setLibraryLoaded(true));
+      if (tracks) setUploadedTracks(tracks);
+    }).catch(() => {}).finally(() => setLibraryLoaded(true));
   }, []);
 
   const triggerEnrichment = () => {
@@ -674,7 +684,7 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
     try {
       await fetch('/api/library/enrich-bpm-key', { method: 'POST' });
       const tracks = await loadLibraryFromSupabase();
-      if (tracks) { setUploadedTracks(tracks); localStorage.setItem('sd_library', JSON.stringify(tracks)); }
+      if (tracks) setUploadedTracks(tracks);
     } catch { /* non-fatal */ } finally {
       setEnrichingBpmKey(false);
     }
@@ -799,7 +809,7 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
   };
 
   const clearLibrary = async () => {
-    localStorage.removeItem('sd_library');
+    clearLibraryCaches();
     setUploadedTracks(null);
     setShowUpload(false);
     const supabase = createClient();
@@ -869,11 +879,11 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
       setAddUrl(''); setUrlSource(null);
       setShowAddForm(false);
       const tracks = await loadLibraryFromSupabase();
-      if (tracks) { setUploadedTracks(tracks); localStorage.setItem('sd_library', JSON.stringify(tracks)); }
+      if (tracks) setUploadedTracks(tracks);
       fetch('/api/library/enrich-lastfm', { method: 'POST' }).catch(() => {});
       fetch('/api/library/enrich-bpm-key', { method: 'POST' }).then(async () => {
         const updated = await loadLibraryFromSupabase();
-        if (updated) { setUploadedTracks(updated); localStorage.setItem('sd_library', JSON.stringify(updated)); }
+        if (updated) setUploadedTracks(updated);
       }).catch(() => {});
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Failed to add track');
@@ -1011,14 +1021,12 @@ export function Library({ onboarding, fromPlan = false, newUser = false }: {
   const handleDeleteWishlist = async (id: string) => {
     const supabase = createClient();
     await supabase.from('wishlist_tracks').delete().eq('id', id);
-    const tracks = await loadLibraryFromSupabase();
+    const tracks = await loadLibraryFromSupabase().catch(() => null);
     if (tracks) {
       setUploadedTracks(tracks);
-      localStorage.setItem('sd_library', JSON.stringify(tracks));
     } else {
       const remaining = (uploadedTracks ?? []).filter(t => t.id !== id);
       setUploadedTracks(remaining.length ? remaining : null);
-      localStorage.setItem('sd_library', JSON.stringify(remaining));
     }
   };
 

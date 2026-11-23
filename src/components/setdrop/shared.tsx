@@ -40,6 +40,7 @@ export function Nav() {
   }, []);
 
   const handleSignOut = async () => {
+    clearLibraryCaches(); // the next account on this browser starts clean
     await supabase.auth.signOut();
     router.push('/login');
   };
@@ -649,6 +650,7 @@ export function GenrePillSelector({ selected, onChange, genres }: GenrePillSelec
 
 // ─── GenreCombobox ──────────────────────────────────────────────────────────
 import { GENRE_GROUPS } from '@/lib/setdrop/constants';
+import { clearLibraryCaches } from '@/lib/setdrop/library-cache';
 
 function genreSearchKey(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9&]+/g, '');
