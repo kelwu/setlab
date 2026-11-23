@@ -9,6 +9,7 @@ import { SDButton, PageHeader, Card, CardHeader, Tabs, Badge, EmptyState, Loadin
 import { WhatsNewModal } from './WhatsNewModal';
 import { GettingStarted } from './GettingStarted';
 import type { OnboardingProgress } from '@/lib/setdrop/onboarding';
+import { daysUntilGig, formatGigDate, nextGig as pickNextGig, pastGigs } from '@/lib/setdrop/gig-dates';
 
 interface LibraryStats {
   totalTracks: number;
@@ -422,10 +423,8 @@ export function Dashboard({ onboarding }: { onboarding: OnboardingProgress }) {
 
         {/* Next Gig widget */}
         {gigHistory !== null && (() => {
-          const nextGig = gigHistory.find(g => new Date(g.gigDate) >= new Date()) ?? null;
-          const daysUntil = nextGig
-            ? Math.ceil((new Date(nextGig.gigDate).getTime() - Date.now()) / 86400000)
-            : null;
+          const nextGig = pickNextGig(gigHistory);
+          const daysUntil = nextGig ? daysUntilGig(nextGig.gigDate) : null;
           return (
             <div style={{ background:SD.surface, border:`1px solid ${nextGig ? SD.borderMid : SD.border}`,
               borderRadius:4, padding:'14px 24px', marginBottom:16,
@@ -767,13 +766,13 @@ export function Dashboard({ onboarding }: { onboarding: OnboardingProgress }) {
         </div>
 
         {/* Gig History — past gigs only, condensed */}
-        {gigHistory !== null && gigHistory.filter(g => new Date(g.gigDate) < new Date()).length > 0 && (
+        {gigHistory !== null && pastGigs(gigHistory).length > 0 && (
           <Card style={{ marginBottom:16 }}>
             <CardHeader title="Gig History" action={
               <SDButton ghost onClick={() => router.push('/history')} style={{ fontSize:12, padding:'5px 12px' }}>View All</SDButton>
             }/>
             <div style={{ padding:'16px' }}>
-              {gigHistory.filter(g => new Date(g.gigDate) < new Date()).slice(0, 5).map((g, i, arr) => (
+              {pastGigs(gigHistory).slice(0, 5).map((g, i, arr) => (
                 <div key={g.id} onClick={() => router.push(`/gigs/${g.id}`)}
                   style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
                     padding:'14px 8px', borderBottom: i < arr.length - 1 ? `1px solid ${SD.border}` : 'none',
@@ -787,7 +786,7 @@ export function Dashboard({ onboarding }: { onboarding: OnboardingProgress }) {
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ fontFamily:SD.mono, fontSize:12, color:SD.textMuted, flexShrink:0 }}>
-                      {new Date(g.gigDate).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}
+                      {formatGigDate(g.gigDate)}
                     </div>
                     <div style={{ fontFamily:SD.mono, fontSize:10, color:SD.accent, letterSpacing:1 }}>REFLECT →</div>
                   </div>

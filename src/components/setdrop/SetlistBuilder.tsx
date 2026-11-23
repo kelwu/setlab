@@ -145,6 +145,9 @@ export function SetlistBuilder({ onboarding, suggestedGenre = null }: {
   const [soundcloudUrl, setSoundcloudUrl] = useState('');
   const [wordplay, setWordplay] = useState('');
   const [venueName, setVenueName] = useState('');
+  // Optional gig date (YYYY-MM-DD). Saving the set with one adds the gig to the
+  // dashboard's Next Gig widget, via the same gig_history table the Gig Log uses.
+  const [gigDate, setGigDate] = useState('');
   const [cleanOnly, setCleanOnly] = useState(false);
 
   const [libraryCount, setLibraryCount] = useState<number | null>(null);
@@ -261,6 +264,7 @@ export function SetlistBuilder({ onboarding, suggestedGenre = null }: {
       if (typeof p.mixName === 'string') setMixName(p.mixName);
       if (typeof p.vibe === 'string') setVibe(p.vibe);
       if (typeof p.venueName === 'string') setVenueName(p.venueName);
+      // gigDate is deliberately not restored: a regenerated set is usually for a new gig.
       if (Array.isArray(p.arcPoints) && p.arcPoints.length === 5) setArcPoints(p.arcPoints as number[]);
       if (typeof p.seedSearch === 'string') setSeedSearch(p.seedSearch);
       if (typeof p.soundcloudUrl === 'string') setSoundcloudUrl(p.soundcloudUrl);
@@ -444,6 +448,7 @@ export function SetlistBuilder({ onboarding, suggestedGenre = null }: {
     // Persist to Supabase if authenticated
     let savedId: string | undefined;
     let savedSlug: string | undefined;
+    let gigSaved = false;
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -469,6 +474,18 @@ export function SetlistBuilder({ onboarding, suggestedGenre = null }: {
           review_notes: finalSetlist.reviewNotes || null,
         }).select('id').single();
         savedId = saved?.id;
+        if (saved?.id && gigDate) {
+          const { error: gigError } = await supabase.from('gig_history').insert({
+            user_id: user.id,
+            setlist_id: saved.id,
+            gig_name: finalSetlist.name,
+            gig_date: gigDate,
+            venue: venueName.trim() || null,
+            actual_tracks: null,
+            reflection_json: null,
+          });
+          gigSaved = !gigError;
+        }
       }
     } catch { /* non-fatal */ }
 
@@ -492,6 +509,7 @@ export function SetlistBuilder({ onboarding, suggestedGenre = null }: {
         ...finalSetlist,
         dbId: savedId,
         dbSlug: savedSlug,
+        gigLogged: gigSaved || undefined,
         generatedAt: new Date().toISOString(),
         excludedCount,
         libraryTracksUsed,
@@ -500,7 +518,7 @@ export function SetlistBuilder({ onboarding, suggestedGenre = null }: {
           eras: eras.length ? eras : undefined, artists: artists.length ? artists : undefined,
           crowdContext: crowd,
           durationMinutes, lineupSlot: slot,
-          mixName: mixName || undefined, vibe: vibe || undefined, venueName: venueName || undefined,
+          mixName: mixName || undefined, vibe: vibe || undefined, venueName: venueName || undefined, gigDate: gigDate || undefined,
           arcPoints, seedSearch: seedSearch || undefined,
           soundcloudUrl: soundcloudUrl || undefined, wordplay: wordplay || undefined,
         },
@@ -757,6 +775,18 @@ export function SetlistBuilder({ onboarding, suggestedGenre = null }: {
                 placeholder="e.g. Friday Night Affair" />
               <SDInput label="Venue Name (optional — Gig Intel)" value={venueName}
                 onChange={setVenueName} placeholder="e.g. Fabric, London" />
+              <div style={fieldStyle}>
+                <label style={labelStyle} htmlFor="gig-date">Gig Date (optional)</label>
+                <input id="gig-date" type="date" value={gigDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setGigDate(e.target.value)}
+                  style={{ background:SD.surface2, border:`1px solid ${SD.borderMid}`, borderRadius:SD.r2,
+                    padding:'10px 12px', color:SD.text, fontFamily:SD.mono, fontSize:13, outline:'none',
+                    width:'100%', boxSizing:'border-box', colorScheme:'dark' }} />
+                <span style={{ fontFamily:SD.mono, fontSize:SD.t11, color:SD.textMuted }}>
+                  Adds the gig to your dashboard countdown.
+                </span>
+              </div>
             </div>
             {playlists.length > 0 && (
               <div style={fieldStyle}>

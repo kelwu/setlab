@@ -139,6 +139,8 @@ export interface GeneratedSetlist {
   shareSlug: string;
   dbId?: string;
   dbSlug?: string;
+  /** True when Plan Set already saved this set's gig (date entered up front). */
+  gigLogged?: boolean;
   generatedAt?: string;
   excludedCount?: number;
   libraryTracksUsed?: number;

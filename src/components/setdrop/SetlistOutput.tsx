@@ -153,6 +153,8 @@ export function SetlistOutput() {
   const [gigDate, setGigDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loggingGig, setLoggingGig] = useState(false);
   const [gigLogged, setGigLogged] = useState(false);
+  // Plan Set already logged the gig when the DJ entered a gig date.
+  useEffect(() => { if (setlist?.gigLogged) setGigLogged(true); }, [setlist?.gigLogged]);
 
   const handleLogGig = async () => {
     if (!setlist?.dbId) return;
