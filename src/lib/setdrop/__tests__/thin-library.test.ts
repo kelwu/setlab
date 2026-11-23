@@ -17,6 +17,24 @@ describe('lacksGenreSignal', () => {
     expect(lacksGenreSignal('Blues')).toBe(false);
     expect(lacksGenreSignal('Loop Samples')).toBe(false);
   });
+
+  // Real genre strings from production libraries that must not fill a dance set
+  // as "untagged" tracks.
+  it.each([
+    'Accapella', 'Acapella', 'A Cappella', 'Transitions', 'Christmas', "x'mas", 'Xmas',
+    'kids-pop-bop; ,usa; ,theworld; , Kids Party; #kids', 'Música Infantil', "Children'S Music",
+    'movie tunes; #kids', 'TV Shows', 'Teleseries', 'Theme', 'New Age', 'Chill Out', 'Lounge',
+    'People & Blogs',
+  ])('keeps %s out of the untagged fallback', g => {
+    expect(lacksGenreSignal(g)).toBe(false);
+    expect(passesGenreGate('House', g)).toBe(false);
+  });
+
+  it('still treats pool and era labels as untagged', () => {
+    for (const g of ['Peru BPM', '#nogenre', 'No Genre', 'Unknown', '80s', "90's", 'Remix Service', 'DJ Edits', 'Club']) {
+      expect(lacksGenreSignal(g)).toBe(true);
+    }
+  });
 });
 
 describe('genre gate with record-pool labels', () => {

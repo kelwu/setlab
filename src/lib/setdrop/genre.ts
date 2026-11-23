@@ -116,9 +116,24 @@ export function genreRelevance(gigGenre: string, trackGenre: string, tags: strin
   return { tier: 'adjacent', score: 2 };
 }
 
-// Real genres that never belong in a dance set, plus non-music files. These are a
-// genuine signal (keep them out), not noise to fall back on.
-const NON_DANCE = /\b(rock|metal|punk|grunge|country|folk|blues|classical|orchestral|jazz|gospel|christian|soundtrack|score|spoken|podcast|comedy|audiobook|loops?|samples?|sfx|fx|tools?)\b/;
+// Real genres that never belong in a dance set, plus non-music files, DJ utility
+// files (acapellas, transitions) and seasonal, kids, TV and background music.
+// These are a genuine signal (keep them out), not noise to fall back on. Only
+// consulted for strings that already failed every family/super-family match, so
+// "Ambient House" or "Theme Techno" still classify as house/techno first. Checked
+// against real genre strings in production libraries ("Accapella", "x'mas", "#kids",
+// "TV Shows", "People & Blogs").
+const NON_DANCE = new RegExp('\\b(' + [
+  'rock', 'metal', 'punk', 'grunge', 'country', 'folk', 'blues', 'classical', 'orchestral', 'jazz',
+  'gospel', 'christian', 'soundtrack', 'score', 'spoken', 'podcast', 'comedy', 'audiobook',
+  'loops?', 'samples?', 'sfx', 'fx', 'tools?',
+  // DJ utility files, not songs: acapella / accapella / a cappella, transitions
+  'a ?c+ap+el+as?', 'transitions?',
+  // seasonal, kids, TV and background music
+  "christmas", "x ?'?mas", 'navidad', 'holiday', 'kids?', "children'?s?", 'infantil', 'nursery',
+  'lullab(?:y|ies)', 'tv', 'teleseries', 'theme', 'movie', 'new age', 'ambient',
+  'chill ?out', 'lounge', 'meditation', 'relax(?:ing)?', 'sleep', 'blogs?',
+].join('|') + ')\\b');
 
 /** True when a track carries no usable genre evidence: no genre or tags at all, or
  *  only a string we can't place in any family or super-family (and that isn't a
