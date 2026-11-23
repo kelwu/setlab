@@ -60,7 +60,7 @@ export default function PrivacyPage() {
         <div style={{ marginBottom: 48 }}>
           <div style={{ fontFamily: S.mono, fontSize: 12, color: S.textMuted,
             letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>
-            Last updated: November 12, 2026
+            Last updated: November 22, 2026
           </div>
           <h1 style={{ fontFamily: S.display, fontSize: 'clamp(48px,7vw,80px)',
             letterSpacing: 4, margin: '0 0 16px', lineHeight: .95, color: S.text }}>
@@ -185,6 +185,26 @@ export default function PrivacyPage() {
           {BRAND.name} never sees or stores your card number. We store only a Stripe customer ID, your
           subscription status and tier, and the current billing period, so we can unlock Pro features and
           generate invoices. See Section 4 for details.
+        </P>
+
+        <p style={{ fontFamily: S.mono, fontSize: 13, color: S.textMuted,
+          letterSpacing: 1.5, textTransform: 'uppercase', margin: '24px 0 10px' }}>
+          How You Found {BRAND.name}
+        </p>
+        <P>
+          To learn which channels bring DJs to {BRAND.name}, we keep a record of how you first arrived and
+          store it on your account when you sign up:
+        </P>
+        <UL items={[
+          'The campaign tags in the link you first followed, if any (utm_source, utm_medium, utm_campaign)',
+          'The website that sent you (its domain name only, such as google.com — never the full address)',
+          <>The first {BRAND.name} page you opened, and when</>,
+          <>Your answer to the optional &ldquo;How did you hear about {BRAND.name}?&rdquo; question shown to new
+            accounts (or that you skipped it), with any text you type for &ldquo;Other&rdquo;</>,
+        ]} />
+        <P>
+          Before you sign up, this sits only in a cookie in your browser (see Section 6). We use it only to
+          understand where {BRAND.name} is being found, not for advertising, and it is deleted with your account.
         </P>
 
         <p style={{ fontFamily: S.mono, fontSize: 13, color: S.textMuted,
@@ -375,10 +395,21 @@ export default function PrivacyPage() {
         {/* 6 */}
         <H2>6. Cookies</H2>
         <P>
-          {BRAND.name} sets one cookie of its own: the Supabase session cookie (prefixed{' '}
-          <code style={{ color: S.accent }}>sb-</code>), set when you log in. It is HTTP-only, Secure, and
+          {BRAND.name} sets two cookies of its own. The Supabase session cookie (prefixed{' '}
+          <code style={{ color: S.accent }}>sb-</code>) is set when you log in. It is HTTP-only, Secure, and
           SameSite. It expires when you sign out or after the session token expires (~1 hour,
           auto-refreshed while you&apos;re active).
+        </P>
+        <P>
+          The first-visit cookie (<code style={{ color: S.accent }}>sl_ft</code>) is set on your first visit
+          before you have an account. It holds the campaign tags, referring domain and first page described
+          in Section 2 under &ldquo;How You Found {BRAND.name}&rdquo;, so they can be saved to your account if
+          you sign up. It is HTTP-only and SameSite, is never overwritten, and expires after 90 days.
+        </P>
+        <P>
+          {BRAND.name} also keeps a few settings in your browser&apos;s local storage, such as a copy of your
+          own library so the app still works if our database can&apos;t be reached, and which DJ software you
+          picked. The library copy is removed when you sign out.
         </P>
         <P>
           Google Analytics sets its own cookies (prefixed <code style={{ color: S.accent }}>_ga</code>) to
