@@ -107,7 +107,11 @@ function readinessView(
   return { ...tones[status], text };
 }
 
-export function SetlistBuilder({ onboarding }: { onboarding: OnboardingProgress }) {
+export function SetlistBuilder({ onboarding, suggestedGenre = null }: {
+  onboarding: OnboardingProgress;
+  /** First set only: the library's biggest genre, to start the form from. */
+  suggestedGenre?: string | null;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
@@ -231,10 +235,23 @@ export function SetlistBuilder({ onboarding }: { onboarding: OnboardingProgress 
     return () => { ctrl.abort(); clearTimeout(timer); };
   }, [sourcePlaylist, playlists, primaryGenre, secondaryGenre, eras, artists, duration, libraryCount]);
 
+  // Set when the form was started from the library's biggest genre (first set).
+  const [startedFromLibrary, setStartedFromLibrary] = useState<string | null>(null);
+
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem('sd_builder_prefill');
-      if (!raw) return;
+      if (!raw) {
+        // First set: don't make a new DJ fill a blank form. Start on their
+        // library's biggest genre and a 60-minute set; crowd and slot are
+        // about their gig, so those stay theirs to pick.
+        if (suggestedGenre) {
+          setPrimaryGenre(suggestedGenre);
+          setDuration('60 min');
+          setStartedFromLibrary(suggestedGenre);
+        }
+        return;
+      }
       sessionStorage.removeItem('sd_builder_prefill');
       const p = JSON.parse(raw) as Record<string, unknown>;
       if (typeof p.primaryGenre === 'string') setPrimaryGenre(p.primaryGenre);
@@ -242,7 +259,7 @@ export function SetlistBuilder({ onboarding }: { onboarding: OnboardingProgress 
       if (Array.isArray(p.eras)) setEras(p.eras.filter((x): x is number => typeof x === 'number'));
       if (Array.isArray(p.artists)) setArtists(p.artists.filter((x): x is string => typeof x === 'string'));
       if (typeof p.crowdContext === 'string') setCrowd(p.crowdContext);
-      if (typeof p.durationMinutes === 'number') setDuration(String(p.durationMinutes));
+      if (typeof p.durationMinutes === 'number') setDuration(`${p.durationMinutes} min`); // match the DURATION_OPTS pill labels
       if (typeof p.lineupSlot === 'string') setSlot(p.lineupSlot);
       if (typeof p.mixName === 'string') setMixName(p.mixName);
       if (typeof p.vibe === 'string') setVibe(p.vibe);
@@ -253,7 +270,7 @@ export function SetlistBuilder({ onboarding }: { onboarding: OnboardingProgress 
       if (typeof p.soundcloudUrl === 'string') setSoundcloudUrl(p.soundcloudUrl);
       if (typeof p.wordplay === 'string') setWordplay(p.wordplay);
     } catch { /* ignore */ }
-  }, []);
+  }, [suggestedGenre]);
 
   const GEN_STEPS = [
     'Analyzing your library...',
@@ -746,6 +763,13 @@ export function SetlistBuilder({ onboarding }: { onboarding: OnboardingProgress 
         {/* Step 1 */}
         {step === 1 && (
           <div style={{ display:'flex', flexDirection:'column', gap:32 }}>
+            {startedFromLibrary && primaryGenre === startedFromLibrary && (
+              <div style={{ fontFamily:SD.mono, fontSize:SD.t12, color:SD.textMuted, lineHeight:1.6,
+                padding:'10px 14px', border:`1px solid ${SD.border}`, borderRadius:3, background:SD.surface2 }}>
+                We started you on <span style={{ color:SD.text }}>{startedFromLibrary}</span>, your library&apos;s
+                biggest genre, and a 60-minute set. Change anything, then pick your crowd and slot.
+              </div>
+            )}
             <div className="sd-grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
               <SDInput label="Mix Name" value={mixName} onChange={setMixName}
                 placeholder="e.g. Friday Night Affair" />

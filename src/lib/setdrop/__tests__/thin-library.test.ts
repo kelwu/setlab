@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { genreRelevance, gigGenreMatch, lacksGenreSignal, passesGenreGate } from '../genre';
+import { genreRelevance, gigGenreMatch, lacksGenreSignal, passesGenreGate, suggestGigGenre } from '../genre';
 import { classifyReadiness, MIN_SUPERFAMILY_TRACKS, type ReadinessCounts } from '../readiness';
 
 describe('lacksGenreSignal', () => {
@@ -16,6 +16,24 @@ describe('lacksGenreSignal', () => {
     expect(lacksGenreSignal('Rock')).toBe(false);
     expect(lacksGenreSignal('Blues')).toBe(false);
     expect(lacksGenreSignal('Loop Samples')).toBe(false);
+  });
+
+  // Real genre strings from production libraries that must not fill a dance set
+  // as "untagged" tracks.
+  it.each([
+    'Accapella', 'Acapella', 'A Cappella', 'Transitions', 'Christmas', "x'mas", 'Xmas',
+    'kids-pop-bop; ,usa; ,theworld; , Kids Party; #kids', 'Música Infantil', "Children'S Music",
+    'movie tunes; #kids', 'TV Shows', 'Teleseries', 'Theme', 'New Age', 'Chill Out', 'Lounge',
+    'People & Blogs',
+  ])('keeps %s out of the untagged fallback', g => {
+    expect(lacksGenreSignal(g)).toBe(false);
+    expect(passesGenreGate('House', g)).toBe(false);
+  });
+
+  it('still treats pool and era labels as untagged', () => {
+    for (const g of ['Peru BPM', '#nogenre', 'No Genre', 'Unknown', '80s', "90's", 'Remix Service', 'DJ Edits', 'Club']) {
+      expect(lacksGenreSignal(g)).toBe(true);
+    }
   });
 });
 
@@ -54,5 +72,26 @@ describe('super-family floor counts untagged tracks with a BPM', () => {
     const r = classifyReadiness(counts({ superFamily: 3, untagged: 400, usable: 403 }), 24, false);
     expect(r.status).not.toBe('red');
     expect(MIN_SUPERFAMILY_TRACKS).toBe(20);
+  });
+});
+
+describe('suggestGigGenre', () => {
+  it('merges spelling variants and picks the biggest builder genre', () => {
+    const rows = [
+      { genre: 'Other', track_count: 900 },
+      { genre: 'Hip Hop', track_count: 300 },
+      { genre: 'Hiphop', track_count: 250 },
+      { genre: 'House', track_count: 400 },
+    ];
+    expect(suggestGigGenre(rows)).toBe('Hip-Hop');
+  });
+
+  it('ignores labels that are not builder genres and returns null when none map', () => {
+    expect(suggestGigGenre([{ genre: 'Peru BPM', track_count: 1067 }, { genre: null, track_count: 50 }])).toBeNull();
+    expect(suggestGigGenre([])).toBeNull();
+  });
+
+  it('accepts string counts as returned by Postgres bigint', () => {
+    expect(suggestGigGenre([{ genre: 'Tech House', track_count: '12' }])).toBe('Tech House');
   });
 });

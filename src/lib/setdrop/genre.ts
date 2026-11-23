@@ -116,9 +116,24 @@ export function genreRelevance(gigGenre: string, trackGenre: string, tags: strin
   return { tier: 'adjacent', score: 2 };
 }
 
-// Real genres that never belong in a dance set, plus non-music files. These are a
-// genuine signal (keep them out), not noise to fall back on.
-const NON_DANCE = /\b(rock|metal|punk|grunge|country|folk|blues|classical|orchestral|jazz|gospel|christian|soundtrack|score|spoken|podcast|comedy|audiobook|loops?|samples?|sfx|fx|tools?)\b/;
+// Real genres that never belong in a dance set, plus non-music files, DJ utility
+// files (acapellas, transitions) and seasonal, kids, TV and background music.
+// These are a genuine signal (keep them out), not noise to fall back on. Only
+// consulted for strings that already failed every family/super-family match, so
+// "Ambient House" or "Theme Techno" still classify as house/techno first. Checked
+// against real genre strings in production libraries ("Accapella", "x'mas", "#kids",
+// "TV Shows", "People & Blogs").
+const NON_DANCE = new RegExp('\\b(' + [
+  'rock', 'metal', 'punk', 'grunge', 'country', 'folk', 'blues', 'classical', 'orchestral', 'jazz',
+  'gospel', 'christian', 'soundtrack', 'score', 'spoken', 'podcast', 'comedy', 'audiobook',
+  'loops?', 'samples?', 'sfx', 'fx', 'tools?',
+  // DJ utility files, not songs: acapella / accapella / a cappella, transitions
+  'a ?c+ap+el+as?', 'transitions?',
+  // seasonal, kids, TV and background music
+  "christmas", "x ?'?mas", 'navidad', 'holiday', 'kids?', "children'?s?", 'infantil', 'nursery',
+  'lullab(?:y|ies)', 'tv', 'teleseries', 'theme', 'movie', 'new age', 'ambient',
+  'chill ?out', 'lounge', 'meditation', 'relax(?:ing)?', 'sleep', 'blogs?',
+].join('|') + ')\\b');
 
 /** True when a track carries no usable genre evidence: no genre or tags at all, or
  *  only a string we can't place in any family or super-family (and that isn't a
@@ -236,4 +251,32 @@ export function gigGenreMatch(
 export function gigGenreLabel(primaryGenre: string, secondaryGenre?: string | null): string {
   const s = secondaryGenre?.trim();
   return s && s.toLowerCase() !== primaryGenre.trim().toLowerCase() ? `${primaryGenre} or ${s}` : primaryGenre;
+}
+
+// Builder genre for a canonical token, e.g. "hip-hop" → "Hip-Hop". First listing wins.
+const TOKEN_BUILDER_GENRE: Record<string, string> = {};
+for (const grp of GENRE_GROUPS) {
+  for (const g of grp.genres) {
+    const c = canonToken(g);
+    if (!(c in TOKEN_BUILDER_GENRE)) TOKEN_BUILDER_GENRE[c] = g;
+  }
+}
+
+/**
+ * The Plan Set genre that best fits a library, from its raw genre counts (as
+ * get_top_genres returns them). Raw strings are mapped onto the builder's own
+ * genre list and their counts summed, so "Hip Hop" and "Hiphop" both count
+ * toward Hip-Hop. Strings that don't map to a builder genre ("Other", a record
+ * pool name, "Dance") are ignored. Returns null when nothing maps.
+ */
+export function suggestGigGenre(rows: { genre: string | null; track_count: number | string }[]): string | null {
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    const g = r.genre ? TOKEN_BUILDER_GENRE[canonToken(r.genre)] : undefined;
+    if (g) totals.set(g, (totals.get(g) ?? 0) + Number(r.track_count || 0));
+  }
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [g, n] of totals) if (n > bestN) { best = g; bestN = n; }
+  return best;
 }
