@@ -153,6 +153,8 @@ export async function GET(req: NextRequest) {
       }
       const ok = await loopsSendEventStrict(d.email, STAGE_EVENT[d.stage], {
         eventProperties: { sendNumber: d.sendNumber },
+        // Workflow branches can only filter on contact properties, so mirror it there.
+        contactProperties: { reEngagementSendNumber: d.sendNumber },
         idempotencyKey: `reengage-${d.userId}-${d.sendNumber}`,
       });
       if (!ok) {

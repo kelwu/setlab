@@ -74,13 +74,18 @@ export async function loopsContactStatus(email: string): Promise<LoopsContactSta
 /**
  * Send an event and report whether Loops accepted it. Unlike loopsSendEvent this does
  * not swallow failures, so callers can undo bookkeeping when nothing was sent.
- * `eventProperties` are the values usable inside the email (they must be created in
- * Loops first). The idempotency key makes a retried request within 24h a no-op (409).
+ * `eventProperties` are usable inside the email; `contactProperties` are top-level fields that
+ * update the contact (workflow branches can only filter on these). Both must exist in Loops first. The idempotency key makes a retried request within 24h a no-op (409).
  */
 export async function loopsSendEventStrict(
   email: string,
   eventName: string,
-  opts: { eventProperties?: Record<string, string | number | boolean>; idempotencyKey?: string } = {},
+  opts: {
+    eventProperties?: Record<string, string | number | boolean>;
+    /** Set on the contact before the workflow runs, so workflow branches/filters can read them. */
+    contactProperties?: Record<string, string | number | boolean>;
+    idempotencyKey?: string;
+  } = {},
 ): Promise<boolean> {
   if (!process.env.LOOPS_API_KEY) return false;
   try {
@@ -90,7 +95,7 @@ export async function loopsSendEventStrict(
         ...headers(),
         ...(opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
       },
-      body: JSON.stringify({ email, eventName, eventProperties: opts.eventProperties }),
+      body: JSON.stringify({ email, eventName, eventProperties: opts.eventProperties, ...opts.contactProperties }),
     });
     return res.ok || res.status === 409;
   } catch {
