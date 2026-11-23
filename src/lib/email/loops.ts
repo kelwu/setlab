@@ -70,3 +70,30 @@ export async function loopsContactStatus(email: string): Promise<LoopsContactSta
     return 'error';
   }
 }
+
+/**
+ * Send an event and report whether Loops accepted it. Unlike loopsSendEvent this does
+ * not swallow failures, so callers can undo bookkeeping when nothing was sent.
+ * `eventProperties` are the values usable inside the email (they must be created in
+ * Loops first). The idempotency key makes a retried request within 24h a no-op (409).
+ */
+export async function loopsSendEventStrict(
+  email: string,
+  eventName: string,
+  opts: { eventProperties?: Record<string, string | number | boolean>; idempotencyKey?: string } = {},
+): Promise<boolean> {
+  if (!process.env.LOOPS_API_KEY) return false;
+  try {
+    const res = await fetch(`${LOOPS_API}/events/send`, {
+      method: 'POST',
+      headers: {
+        ...headers(),
+        ...(opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
+      },
+      body: JSON.stringify({ email, eventName, eventProperties: opts.eventProperties }),
+    });
+    return res.ok || res.status === 409;
+  } catch {
+    return false;
+  }
+}

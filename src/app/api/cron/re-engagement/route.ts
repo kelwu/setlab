@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { loopsSendEvent, loopsContactStatus } from '@/lib/email/loops';
+import { loopsSendEventStrict, loopsContactStatus } from '@/lib/email/loops';
 import { decide, STAGE_EVENT, MAX_SENDS, type Candidate } from '@/lib/email/re-engagement';
 
 export const maxDuration = 60;
@@ -95,6 +95,7 @@ export async function GET(req: NextRequest) {
     // recorded and dropped. If Loops can't tell us, we don't send (fail closed).
     let newlyUnsubscribed = 0;
     let statusErrors = 0;
+    let notInLoops = 0;
     const checked: typeof eligible = [];
     for (const d of eligible) {
       const status = await loopsContactStatus(d.email);
@@ -107,6 +108,9 @@ export async function GET(req: NextRequest) {
         }
       } else if (status === 'error') {
         statusErrors++;
+      } else if (status === 'no_contact') {
+        // Loops rejects events for contacts it doesn't have, so there is nothing to send.
+        notInLoops++;
       } else {
         checked.push(d);
       }
@@ -124,6 +128,7 @@ export async function GET(req: NextRequest) {
         alreadyUnsubscribed: decisions.filter(d => d.skip === 'unsubscribed').length,
         unsubscribedInLoops: newlyUnsubscribed,
         loopsLookupFailed: statusErrors,
+        notInLoops,
       },
     };
 
@@ -133,14 +138,25 @@ export async function GET(req: NextRequest) {
     for (const d of eligible.slice(0, MAX_PER_RUN)) {
       // Log first. If the log write fails we skip the send, so a broken log can
       // never turn into the same person being emailed every day.
-      const { error } = await admin
+      const { data: logRow, error } = await admin
         .from('re_engagement_log')
-        .insert({ user_id: d.userId, sent_at: new Date().toISOString(), stage: d.stage });
-      if (error) {
-        console.error('[re-engagement] log insert failed, skipping send', error.message);
+        .insert({ user_id: d.userId, sent_at: new Date().toISOString(), stage: d.stage })
+        .select('id')
+        .single();
+      if (error || !logRow) {
+        console.error('[re-engagement] log insert failed, skipping send', error?.message);
         continue;
       }
-      await loopsSendEvent(d.email, STAGE_EVENT[d.stage]);
+      const ok = await loopsSendEventStrict(d.email, STAGE_EVENT[d.stage], {
+        eventProperties: { sendNumber: d.sendNumber },
+        idempotencyKey: `reengage-${d.userId}-${d.sendNumber}`,
+      });
+      if (!ok) {
+        // Nothing went out, so give the send back instead of burning one of the two.
+        await admin.from('re_engagement_log').delete().eq('id', logRow.id);
+        console.error('[re-engagement] Loops rejected the event', d.stage);
+        continue;
+      }
       sent++;
     }
     return NextResponse.json({ sent, ...summary });

@@ -21,6 +21,10 @@ describe('decide', () => {
   it('sends the first email to a dormant user', () => {
     expect(decide(cand(), NOW).skip).toBeUndefined();
   });
+  it('numbers the send so the loop can pick email 1 or 2', () => {
+    expect(decide(cand(), NOW).sendNumber).toBe(1);
+    expect(decide(cand({ priorSends: [daysAgo(25)] }), NOW).sendNumber).toBe(2);
+  });
   it('skips users active in the last 14 days', () => {
     expect(decide(cand({ lastSignInAt: daysAgo(5) }), NOW).skip).toBe('active');
   });

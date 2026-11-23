@@ -49,6 +49,8 @@ export interface Decision {
   userId: string;
   email: string;
   stage: ReEngagementStage;
+  /** 1 for the first email to this user, 2 for the second */
+  sendNumber: number;
   skip?: SkipReason;
 }
 
@@ -56,7 +58,7 @@ const DAY = 24 * 3_600_000;
 
 export function decide(c: Candidate, now = Date.now()): Decision {
   const stage = classifyStage(c.activity);
-  const base = { userId: c.userId, email: c.email, stage };
+  const base = { userId: c.userId, email: c.email, stage, sendNumber: c.priorSends.length + 1 };
   if (c.suppressed) return { ...base, skip: 'unsubscribed' };
   if (Date.parse(c.lastSignInAt) > now - INACTIVE_DAYS * DAY) return { ...base, skip: 'active' };
   if (c.priorSends.length >= MAX_SENDS) return { ...base, skip: 'capped' };
