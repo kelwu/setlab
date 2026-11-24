@@ -102,6 +102,10 @@ export async function GET(req: NextRequest) {
     let notInLoops = 0;
     const checked: typeof eligible = [];
     for (const d of eligible) {
+      // A live run only emails MAX_PER_RUN people, so stop asking Loops once we have enough.
+      // This keeps the run inside the function time limit as the backlog grows. Dry runs
+      // check everyone so the counts are complete.
+      if (!dryRun && checked.length >= MAX_PER_RUN) break;
       const status = await loopsContactStatus(d.email);
       if (status === 'unsubscribed') {
         newlyUnsubscribed++;
