@@ -106,6 +106,8 @@ export async function GET(req: NextRequest) {
       // This keeps the run inside the function time limit as the backlog grows. Dry runs
       // check everyone so the counts are complete.
       if (!dryRun && checked.length >= MAX_PER_RUN) break;
+      // Pace lookups under Loops' rate limit (about 10 requests a second).
+      await new Promise(r => setTimeout(r, 120));
       const status = await loopsContactStatus(d.email);
       if (status === 'unsubscribed') {
         newlyUnsubscribed++;

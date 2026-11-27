@@ -64,9 +64,19 @@ export async function loopsContactStatus(email: string): Promise<LoopsContactSta
     return 'error';
   }
   try {
-    const res = await fetch(`${LOOPS_API}/contacts/find?email=${encodeURIComponent(email)}`, {
+    // Loops allows about 10 requests a second. On a 429, wait and retry a few times
+    // before giving up (which still fails closed).
+    let res = await fetch(`${LOOPS_API}/contacts/find?email=${encodeURIComponent(email)}`, {
       headers: headers(),
     });
+    for (let attempt = 0; res.status === 429 && attempt < 4; attempt++) {
+      const retryAfter = Number(res.headers?.get?.('retry-after'));
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, 5000) : 500 * (attempt + 1);
+      await new Promise(r => setTimeout(r, waitMs));
+      res = await fetch(`${LOOPS_API}/contacts/find?email=${encodeURIComponent(email)}`, {
+        headers: headers(),
+      });
+    }
     if (!res.ok) {
       console.error(`[Loops] contact lookup failed: HTTP ${res.status}`);
       return 'error';
