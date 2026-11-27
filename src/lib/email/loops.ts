@@ -7,13 +7,26 @@ function headers() {
   };
 }
 
+// Log the reason (never the email or key) when Loops refuses a call, so a bad key or an
+// outage shows up in the runtime logs instead of failing silently.
+function logFailure(what: string, res: Response | null, err?: unknown) {
+  if (res) console.error(`[Loops] ${what} failed: HTTP ${res.status}`);
+  else console.error(`[Loops] ${what} failed:`, err instanceof Error ? err.message : 'unknown error');
+}
+
 export async function loopsCreateContact(email: string) {
   if (!process.env.LOOPS_API_KEY) return;
-  await fetch(`${LOOPS_API}/contacts/create`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify({ email, source: 'setlab-signup' }),
-  }).catch(() => {});
+  try {
+    const res = await fetch(`${LOOPS_API}/contacts/create`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ email, source: 'setlab-signup' }),
+    });
+    // 409 means the contact already exists, which is fine.
+    if (!res.ok && res.status !== 409) logFailure('contact create', res);
+  } catch (e) {
+    logFailure('contact create', null, e);
+  }
 }
 
 export async function loopsSendEvent(
@@ -22,11 +35,16 @@ export async function loopsSendEvent(
   data?: Record<string, string | number>,
 ) {
   if (!process.env.LOOPS_API_KEY) return;
-  await fetch(`${LOOPS_API}/events/send`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify({ email, eventName, ...data }),
-  }).catch(() => {});
+  try {
+    const res = await fetch(`${LOOPS_API}/events/send`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ email, eventName, ...data }),
+    });
+    if (!res.ok) logFailure(`event ${eventName}`, res);
+  } catch (e) {
+    logFailure(`event ${eventName}`, null, e);
+  }
 }
 
 // Upsert contact properties in Loops (subscriptionTier, libraryImported,

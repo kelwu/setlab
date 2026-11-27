@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { loopsCreateContact, loopsSendEvent, updateLoopsContact } from '@/lib/email/loops'
 import { recordFirstTouch } from '@/lib/acquisition-server'
 import { FIRST_TOUCH_COOKIE, HEARD_ABOUT_MAX_ACCOUNT_AGE_MS } from '@/lib/acquisition'
@@ -39,11 +39,17 @@ export async function GET(request: Request) {
         : false;
 
       if (isNewUser && data.user?.email) {
-        loopsCreateContact(data.user.email);  // non-blocking
-        loopsSendEvent(data.user.email, 'signup');
-        updateLoopsContact(data.user.email, {
-          subscriptionTier: 'free',
-          signedUpAt: new Date().toISOString().split('T')[0],
+        // after() keeps the function alive until these finish, without delaying the redirect.
+        // Un-awaited calls can be cut off when a serverless function returns. Run in order so
+        // the contact exists before the signup event and properties.
+        const email = data.user.email;
+        after(async () => {
+          await loopsCreateContact(email);
+          await loopsSendEvent(email, 'signup');
+          await updateLoopsContact(email, {
+            subscriptionTier: 'free',
+            signedUpAt: new Date().toISOString().split('T')[0],
+          });
         });
       }
       // Wider window than isNewUser: email-confirmation links are often clicked

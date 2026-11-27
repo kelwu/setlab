@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { loopsCreateContact, loopsSendEvent, updateLoopsContact } from '@/lib/email/loops';
@@ -15,11 +15,15 @@ export async function POST() {
     : false;
 
   if (isNewUser) {
-    loopsCreateContact(user.email); // non-blocking
-    loopsSendEvent(user.email, 'signup');
-    updateLoopsContact(user.email, {
-      subscriptionTier: 'free',
-      signedUpAt: new Date().toISOString().split('T')[0],
+    // after() keeps the function alive until these finish, without delaying the response.
+    const email = user.email;
+    after(async () => {
+      await loopsCreateContact(email);
+      await loopsSendEvent(email, 'signup');
+      await updateLoopsContact(email, {
+        subscriptionTier: 'free',
+        signedUpAt: new Date().toISOString().split('T')[0],
+      });
     });
     const cookieStore = await cookies();
     await recordFirstTouch(user.id, cookieStore.get(FIRST_TOUCH_COOKIE)?.value);

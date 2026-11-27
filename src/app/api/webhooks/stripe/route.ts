@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { updateLoopsContact } from '@/lib/email/loops';
@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
         // Fire-and-forget: sync the upgrade to Loops. The webhook only has the user
         // id, so look up the account email to key the contact (same email as signup).
         const { data: u } = await supabase.from('users').select('email').eq('id', userId).single();
-        if (u?.email) updateLoopsContact(u.email, { subscriptionTier: 'pro' });
+        const proEmail = u?.email;
+        if (proEmail) after(() => updateLoopsContact(proEmail, { subscriptionTier: 'pro' }));
       }
       break;
     }
@@ -58,7 +59,8 @@ export async function POST(req: NextRequest) {
         }).eq('id', userRow.id);
         // Fire-and-forget: reflect the churn in Loops so the contact drops back
         // into free-conversion segments.
-        if (userRow.email && !userRow.comp_pro) updateLoopsContact(userRow.email, { subscriptionTier: 'free' });
+        const freeEmail = userRow.email;
+        if (freeEmail && !userRow.comp_pro) after(() => updateLoopsContact(freeEmail, { subscriptionTier: 'free' }));
       }
       break;
     }
@@ -77,7 +79,8 @@ export async function POST(req: NextRequest) {
           subscription_tier: isActive ? 'pro' : 'free',
         }).eq('id', userRow.id);
         // Fire-and-forget: keep Loops' subscriptionTier in sync either direction.
-        if (userRow.email) updateLoopsContact(userRow.email, { subscriptionTier: isActive ? 'pro' : 'free' });
+        const tierEmail = userRow.email;
+        if (tierEmail) after(() => updateLoopsContact(tierEmail, { subscriptionTier: isActive ? 'pro' : 'free' }));
       }
       break;
     }
