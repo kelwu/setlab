@@ -48,3 +48,57 @@ export async function updateLoopsContact(
     console.error('[Loops] contact update failed silently');
   }
 }
+
+export type LoopsContactStatus = 'subscribed' | 'unsubscribed' | 'no_contact' | 'error';
+
+/**
+ * Whether Loops will deliver campaign/workflow email to this address. `subscribed`
+ * is false once the person has unsubscribed. 'error' means we could not tell, and
+ * callers must treat that as "do not send".
+ */
+export async function loopsContactStatus(email: string): Promise<LoopsContactStatus> {
+  if (!process.env.LOOPS_API_KEY) return 'error';
+  try {
+    const res = await fetch(`${LOOPS_API}/contacts/find?email=${encodeURIComponent(email)}`, {
+      headers: headers(),
+    });
+    if (!res.ok) return 'error';
+    const body = (await res.json()) as { subscribed?: boolean }[];
+    if (!Array.isArray(body) || body.length === 0) return 'no_contact';
+    return body[0].subscribed === false ? 'unsubscribed' : 'subscribed';
+  } catch {
+    return 'error';
+  }
+}
+
+/**
+ * Send an event and report whether Loops accepted it. Unlike loopsSendEvent this does
+ * not swallow failures, so callers can undo bookkeeping when nothing was sent.
+ * `eventProperties` are usable inside the email; `contactProperties` are top-level fields that
+ * update the contact (workflow branches can only filter on these). Both must exist in Loops first. The idempotency key makes a retried request within 24h a no-op (409).
+ */
+export async function loopsSendEventStrict(
+  email: string,
+  eventName: string,
+  opts: {
+    eventProperties?: Record<string, string | number | boolean>;
+    /** Set on the contact before the workflow runs, so workflow branches/filters can read them. */
+    contactProperties?: Record<string, string | number | boolean>;
+    idempotencyKey?: string;
+  } = {},
+): Promise<boolean> {
+  if (!process.env.LOOPS_API_KEY) return false;
+  try {
+    const res = await fetch(`${LOOPS_API}/events/send`, {
+      method: 'POST',
+      headers: {
+        ...headers(),
+        ...(opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
+      },
+      body: JSON.stringify({ email, eventName, eventProperties: opts.eventProperties, ...opts.contactProperties }),
+    });
+    return res.ok || res.status === 409;
+  } catch {
+    return false;
+  }
+}
