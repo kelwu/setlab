@@ -20,6 +20,14 @@ describe('loopsContactStatus', () => {
     vi.stubGlobal('fetch', reply(true, []));
     expect(await loopsContactStatus('a@b.co')).toBe('no_contact');
   });
+  it('retries after a 429 and then succeeds', async () => {
+    const f = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 429, headers: new Headers({ 'retry-after': '0' }), json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => [{ email: 'a@b.co', subscribed: true }] });
+    vi.stubGlobal('fetch', f);
+    expect(await loopsContactStatus('a@b.co')).toBe('subscribed');
+    expect(f).toHaveBeenCalledTimes(2);
+  });
   it('fails closed on API errors, network errors and a missing key', async () => {
     vi.stubGlobal('fetch', reply(false, {}));
     expect(await loopsContactStatus('a@b.co')).toBe('error');
