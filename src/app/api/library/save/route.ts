@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { saveTracksToDatabase } from '@/lib/setdrop/library-save';
 import { updateLoopsContact } from '@/lib/email/loops';
@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
     const stats = await saveTracksToDatabase(user.id, tracks, source, playlists);
 
     // Fire-and-forget: mark the contact as having imported a library (Loops segmentation).
-    if (user.email) updateLoopsContact(user.email, { libraryImported: true });
+    const loopsEmail = user.email;
+    if (loopsEmail) after(() => updateLoopsContact(loopsEmail, { libraryImported: true }));
 
     return NextResponse.json({
       ok: true,

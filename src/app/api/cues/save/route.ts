@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeTrackCues } from '@/lib/cues/validate';
 import { trackKey } from '@/lib/setdrop/rekordbox-parser';
@@ -69,8 +69,9 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     // Segmentation only (no event, so it can't trigger an email): lets
     // lifecycle campaigns target DJs who've brought their Serato cues in.
-    if (user.email && [...rows.values()].some(r => (r.cue_count as number) > 0)) {
-      updateLoopsContact(user.email, { cuesConverted: true });
+    const loopsEmail = user.email;
+    if (loopsEmail && [...rows.values()].some(r => (r.cue_count as number) > 0)) {
+      after(() => updateLoopsContact(loopsEmail, { cuesConverted: true }));
     }
   }
 

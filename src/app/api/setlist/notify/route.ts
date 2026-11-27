@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
 import { BRAND } from '@/lib/brand';
@@ -35,16 +35,17 @@ export async function POST(req: NextRequest) {
   const tier = userRow?.subscription_tier ?? 'free';
 
   // Fire-and-forget: keep the contact's running total in Loops (conversion segmentation).
-  updateLoopsContact(user.email, { setlistsGenerated: allTimeCount ?? 1 });
+  const loopsEmail = user.email;
+  after(() => updateLoopsContact(loopsEmail, { setlistsGenerated: allTimeCount ?? 1 }));
 
   if ((allTimeCount ?? 0) === 1) {
-    loopsSendEvent(user.email, 'first_setlist', { setName: set.name });
+    after(() => loopsSendEvent(loopsEmail, 'first_setlist', { setName: set.name }));
   } else if (tier === 'free' && (monthCount ?? 0) === FREE_MONTHLY_SET_LIMIT - 1) {
     // Warn one set before the monthly cap — the "1 left, go unlimited" nudge.
-    loopsSendEvent(user.email, 'setlist_quota_warning', {
+    after(() => loopsSendEvent(loopsEmail, 'setlist_quota_warning', {
       used: monthCount ?? FREE_MONTHLY_SET_LIMIT - 1,
       limit: FREE_MONTHLY_SET_LIMIT,
-    });
+    }));
   }
 
   const apiKey = process.env.RESEND_API_KEY;
