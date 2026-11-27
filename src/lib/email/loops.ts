@@ -57,16 +57,25 @@ export type LoopsContactStatus = 'subscribed' | 'unsubscribed' | 'no_contact' | 
  * callers must treat that as "do not send".
  */
 export async function loopsContactStatus(email: string): Promise<LoopsContactStatus> {
-  if (!process.env.LOOPS_API_KEY) return 'error';
+  // Failures are logged with a reason only (never the email or key) so a run where every
+  // lookup fails can be diagnosed from the runtime logs.
+  if (!process.env.LOOPS_API_KEY) {
+    console.error('[Loops] contact lookup failed: LOOPS_API_KEY is not set');
+    return 'error';
+  }
   try {
     const res = await fetch(`${LOOPS_API}/contacts/find?email=${encodeURIComponent(email)}`, {
       headers: headers(),
     });
-    if (!res.ok) return 'error';
+    if (!res.ok) {
+      console.error(`[Loops] contact lookup failed: HTTP ${res.status}`);
+      return 'error';
+    }
     const body = (await res.json()) as { subscribed?: boolean }[];
     if (!Array.isArray(body) || body.length === 0) return 'no_contact';
     return body[0].subscribed === false ? 'unsubscribed' : 'subscribed';
-  } catch {
+  } catch (e) {
+    console.error('[Loops] contact lookup failed:', e instanceof Error ? e.message : 'unknown error');
     return 'error';
   }
 }
